@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente de Territorios</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">Terri<span>·</span>OS</div>
+    <p class="login-subtitle" data-i18n="loginSubtitle">Ingresa tus datos para continuar</p>
+
+    <div class="login-error" id="login-error"></div>
+
+    <div class="form-group">
+      <label class="form-label" data-i18n="email">Correo electrónico</label>
+      <input type="email" class="form-control" id="inp-email" data-i18n-ph="email" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="password">Contraseña</label>
+      <input type="password" class="form-control" id="inp-password" data-i18n-ph="password" autocomplete="current-password">
+    </div>
+
+    <div class="login-actions">
+      <button class="btn btn-primary btn-lg w-full" id="btn-login" onclick="doLogin()">
+        <span data-i18n="loginBtn">Entrar</span>
+      </button>
+    </div>
+
+    <div class="login-forgot" onclick="showReset()" data-i18n="forgotPassword">¿Olvidaste tu contraseña?</div>
+
+    <div class="login-lang">
+      <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reset password modal -->
+<div class="modal-overlay" id="modal-reset">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" data-i18n="resetPassword">Restablecer contraseña</span>
+      <button class="modal-close" onclick="closeModal('modal-reset')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" data-i18n="email">Correo electrónico</label>
+        <input type="email" class="form-control" id="reset-email" data-i18n-ph="email">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-reset')" data-i18n="cancel">Cancelar</button>
+      <button class="btn btn-primary" onclick="doReset()" data-i18n="resetPassword">Restablecer</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { Auth } from '/assets/firebase.js';
+
+// Check if already logged in
+Auth.onReady((user) => {
+  if (user) {
+    redirectByRole(Auth.currentRole);
+  }
+});
+
+window.doLogin = async function() {
+  const email = document.getElementById('inp-email').value.trim();
+  const password = document.getElementById('inp-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+
+  if (!email || !password) {
+    errEl.textContent = Lang.t('errorRequired');
+    errEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span>`;
+  errEl.classList.remove('show');
+
+  try {
+    await Auth.login(email, password);
+    // onReady will fire and redirect
+  } catch (err) {
+    errEl.textContent = Lang.t('loginError');
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = `<span data-i18n="loginBtn">${Lang.t('loginBtn')}</span>`;
+  }
+};
+
+window.showReset = function() {
+  document.getElementById('modal-reset').classList.add('open');
+};
+
+window.doReset = async function() {
+  const email = document.getElementById('reset-email').value.trim();
+  if (!email) return;
+  try {
+    await Auth.resetPassword(email);
+    Utils.toast(Lang.t('resetSent'), 'success');
+    closeModal('modal-reset');
+  } catch (err) {
+    Utils.toast(Lang.t('error') + ': ' + err.message, 'error');
+  }
+};
+
+window.redirectByRole = function(role) {
+  if (role === 'admin') window.location.href = '/admin/';
+  else if (role === 'coordinator') window.location.href = '/coordinator/';
+  else window.location.href = '/coordinator/';
+};
+
+window.closeModal = function(id) {
+  document.getElementById(id).classList.remove('open');
+};
+
+// Enter key support
+document.getElementById('inp-password').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doLogin();
+});
+</script>
+
+<script src="/assets/i18n.js"></script>
+<script>
+// Init language
+document.addEventListener('DOMContentLoaded', () => Lang.init());
+</script>
+</body>
+</html>
