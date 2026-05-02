@@ -90,8 +90,9 @@ const Auth = {
 const DB = {
   // Territories
   async getTerritories() {
-    const snap = await getDocs(query(collection(db, 'territories'), orderBy('number')));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, 'territories'));
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return results.sort((a, b) => String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
   },
 
   async getTerritory(id) {
@@ -115,8 +116,9 @@ const DB = {
 
   // Addresses (subcollection)
   async getAddresses(territoryId) {
-    const snap = await getDocs(query(collection(db, 'territories', territoryId, 'addresses'), orderBy('order')));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, 'territories', territoryId, 'addresses'));
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return results.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   },
 
   async saveAddress(territoryId, data, id = null) {
@@ -146,8 +148,9 @@ const DB = {
 
   // Phone records (subcollection)
   async getPhoneRecords(territoryId) {
-    const snap = await getDocs(query(collection(db, 'territories', territoryId, 'phone'), orderBy('order')));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(collection(db, 'territories', territoryId, 'phone'));
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return results.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   },
 
   async savePhoneRecord(territoryId, data, id = null) {
@@ -175,8 +178,9 @@ const DB = {
 
   // Users / Coordinators
   async getCoordinators() {
-    const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'coordinator'), orderBy('name')));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'coordinator')));
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return results.sort((a, b) => a.name?.localeCompare(b.name));
   },
 
   async updateUser(uid, data) {
@@ -189,12 +193,12 @@ const DB = {
 
   // Assignments (history)
   async getAssignments(filters = {}) {
-    let q = collection(db, 'assignments');
-    const constraints = [orderBy('assignedDate', 'desc')];
+    let constraints = [];
     if (filters.coordinatorId) constraints.push(where('coordinatorId', '==', filters.coordinatorId));
     if (filters.territoryId) constraints.push(where('territoryId', '==', filters.territoryId));
-    const snap = await getDocs(query(q, ...constraints));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(query(collection(db, 'assignments'), ...constraints));
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return results.sort((a, b) => (b.assignedDate || '').localeCompare(a.assignedDate || ''));
   },
 
   async createAssignment(data) {
