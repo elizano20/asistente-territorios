@@ -3,134 +3,698 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asistente de Territorios</title>
+<title>Coordinador — Asistente de Territorios</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
-<div class="login-page">
-  <div class="login-card">
-    <div class="login-logo">Terri<span>·</span>OS</div>
-    <p class="login-subtitle" data-i18n="loginSubtitle">Ingresa tus datos para continuar</p>
 
-    <div class="login-error" id="login-error"></div>
+<div id="loading-screen" class="loading-screen">
+  <div class="spinner"></div>
+  <span data-i18n="loading">Cargando...</span>
+</div>
 
-    <div class="form-group">
-      <label class="form-label" data-i18n="email">Correo electrónico</label>
-      <input type="email" class="form-control" id="inp-email" data-i18n-ph="email" autocomplete="email">
-    </div>
-    <div class="form-group">
-      <label class="form-label" data-i18n="password">Contraseña</label>
-      <input type="password" class="form-control" id="inp-password" data-i18n-ph="password" autocomplete="current-password">
-    </div>
+<div id="app" style="display:none">
+  <div class="topbar">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <span class="topbar-logo">Terri<span>·</span>OS</span>
+    <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
+  </div>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-    <div class="login-actions">
-      <button class="btn btn-primary btn-lg w-full" id="btn-login" onclick="doLogin()">
-        <span data-i18n="loginBtn">Entrar</span>
-      </button>
-    </div>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="app-name">Terri<span>·</span>OS</div>
+        <div class="app-role" data-i18n="coordinator">Coordinador</div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" href="#" onclick="showSection('dashboard')"><span class="icon">📊</span><span data-i18n="navHome">Inicio</span></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-user">
+          <strong id="user-name">—</strong>
+          <span class="text-xs text-muted" id="user-email"></span>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-ghost btn-sm" onclick="Auth.logout()" style="flex:1" data-i18n="logout">Salir</button>
+          <button class="lang-toggle" id="lang-toggle-sidebar" onclick="Lang.toggle()">EN</button>
+        </div>
+      </div>
+    </aside>
 
-    <div class="login-forgot" onclick="showReset()" data-i18n="forgotPassword">¿Olvidaste tu contraseña?</div>
+    <main class="main-content">
 
-    <div class="login-lang">
-      <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
-    </div>
+      <!-- DASHBOARD -->
+      <section id="sec-dashboard">
+        <div class="page-header">
+          <h2 id="coord-greeting">Mis Territorios</h2>
+        </div>
+        <div class="page-body">
+          <div class="stats-grid" id="coord-stats"></div>
+
+          <!-- Expired warning -->
+          <div id="expired-warning" style="display:none" class="mb-3" style="background:rgba(251,111,111,0.08);border:1px solid rgba(251,111,111,0.3);border-radius:var(--radius);padding:1rem 1.2rem;color:var(--red);font-size:0.85rem;">
+            ⚠️ <span data-i18n="expiredWarning">Los territorios en rojo están expirados.</span>
+          </div>
+
+          <div class="territory-grid" id="my-territory-grid"></div>
+        </div>
+      </section>
+
+      <!-- TERRITORY DETAIL -->
+      <section id="sec-territories" style="display:none">
+        <div class="page-header" style="position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--border);">
+          <button class="btn btn-ghost btn-sm" onclick="showSection('dashboard')">← <span data-i18n="back">Regresar</span></button>
+          <div class="flex gap-1">
+            <a id="btn-nav-link" href="#" target="_blank" class="btn btn-secondary btn-sm" style="display:none">🧭 Navegar</a>
+            <button class="btn btn-secondary btn-sm" onclick="copyShareLink()">🔗 <span data-i18n="shareLink">Publicadores</span></button>
+          </div>
+        </div>
+
+        <div style="max-width:900px;margin:0 auto;padding:1.5rem 1rem;">
+
+          <!-- Territory card — matches publisher layout -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem;margin-bottom:1.5rem;">
+            <h1 id="terr-title" style="font-family:var(--font-head);font-weight:800;font-size:1.8rem;">Territorio —</h1>
+            <p id="terr-streets" class="text-muted text-sm" style="margin-top:0.3rem;">—</p>
+
+            <!-- Big map -->
+            <div id="terr-map-container" style="display:none;width:100%;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);margin-top:1rem;margin-bottom:1rem;">
+              <img id="terr-map-img" style="width:100%;display:block;object-fit:cover;">
+            </div>
+
+            <!-- Info grid -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;" id="terr-info-grid"></div>
+
+            <!-- Start point -->
+            <div id="terr-start-point" style="display:none;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.85rem;">
+              ⭐ <strong style="color:var(--accent)">Punto de inicio:</strong> <span id="terr-start-text"></span>
+            </div>
+
+            <!-- Nav button -->
+            <a id="terr-nav-btn" href="#" target="_blank" style="display:none;display:block;width:100%;padding:0.9rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font-head);font-weight:700;font-size:1rem;text-align:center;cursor:pointer;margin-bottom:1rem;text-decoration:none;">
+              🧭 Abrir en Google Maps
+            </a>
+
+            <!-- Notes -->
+            <div id="terr-notes-display" class="text-sm text-muted" style="display:none;"></div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="tabs">
+            <div class="tab active" id="tab-btn-door" onclick="switchTab('door')">🚪 <span data-i18n="addresses">Casa en Casa</span></div>
+            <div class="tab" id="tab-btn-phone" onclick="switchTab('phone')">📞 <span data-i18n="phoneTerritory">Telefónico</span></div>
+          </div>
+
+          <!-- Door to door tab -->
+          <div class="tab-content active" id="tab-door">
+            <div class="address-table">
+              <div style="padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-family:var(--font-head);font-weight:700;">Registro de Casa en Casa</span>
+                <span class="text-muted text-sm" id="door-count"></span>
+              </div>
+              <div style="overflow-x:auto;">
+                <table>
+                  <thead><tr>
+                    <th data-i18n="address">Dirección</th>
+                    <th data-i18n="street">Calle</th>
+                    <th data-i18n="observation">Observación</th>
+                    <th data-i18n="comment">Comentario</th>
+                    <th data-i18n="visitDate">Fecha Visita</th>
+                  </tr></thead>
+                  <tbody id="door-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phone tab -->
+          <div class="tab-content" id="tab-phone">
+            <div class="address-table">
+              <div style="padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-family:var(--font-head);font-weight:700;" data-i18n="phoneTerritory">Territorio Telefónico</span>
+                <div class="flex gap-1 items-center">
+                  <span class="text-muted text-sm" id="phone-count"></span>
+                  <button class="btn btn-primary btn-sm" onclick="openAddPhoneModal()">+ Agregar</button>
+                </div>
+              </div>
+              <div style="overflow-x:auto;">
+                <table>
+                  <thead><tr>
+                    <th data-i18n="address">Dirección</th>
+                    <th data-i18n="name">Nombre</th>
+                    <th data-i18n="phone">Teléfono</th>
+                    <th data-i18n="date">Fecha</th>
+                    <th data-i18n="callResult">Resultado</th>
+                    <th></th>
+                  </tr></thead>
+                  <tbody id="phone-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
   </div>
 </div>
 
-<!-- Reset password modal -->
-<div class="modal-overlay" id="modal-reset">
+<!-- Add Address Modal -->
+<div class="modal-overlay" id="modal-add-address">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" data-i18n="resetPassword">Restablecer contraseña</span>
-      <button class="modal-close" onclick="closeModal('modal-reset')">✕</button>
+      <span class="modal-title" id="addr-modal-title" data-i18n="addAddress">Agregar Dirección</span>
+      <button class="modal-close" onclick="closeModal('modal-add-address')">✕</button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="addr-edit-id">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" data-i18n="address">Dirección</label>
+          <input type="text" class="form-control" id="addr-address" placeholder="4700">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="street">Calle</label>
+          <input type="text" class="form-control" id="addr-street" placeholder="58th St">
+        </div>
+      </div>
       <div class="form-group">
-        <label class="form-label" data-i18n="email">Correo electrónico</label>
-        <input type="email" class="form-control" id="reset-email" data-i18n-ph="email">
+        <label class="form-label" data-i18n="observation">Observación</label>
+        <select class="form-control" id="addr-obs-select" onchange="setObsFromSelect(this)"></select>
+        <input type="text" class="form-control mt-1" id="addr-observation" placeholder="O escribe manualmente...">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="comment">Comentario</label>
+        <textarea class="form-control" id="addr-comment" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="visitDate">Fecha de Visita</label>
+        <input type="date" class="form-control" id="addr-visit-date">
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-reset')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="doReset()" data-i18n="resetPassword">Restablecer</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-address')" data-i18n="cancel">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAddress()" data-i18n="save">Guardar</button>
     </div>
   </div>
 </div>
 
-<script type="module">
-import { Auth } from '/assets/firebase.js';
+<!-- Add Phone Record Modal -->
+<div class="modal-overlay" id="modal-add-phone">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="phone-modal-title" data-i18n="addRecord">Agregar Registro</span>
+      <button class="modal-close" onclick="closeModal('modal-add-phone')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="phone-edit-id">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" data-i18n="address">Dirección</label>
+          <input type="text" class="form-control" id="phone-address" placeholder="4700">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="name">Nombre</label>
+          <input type="text" class="form-control" id="phone-name">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="phone">Teléfono</label>
+          <input type="tel" class="form-control" id="phone-number">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="date">Fecha</label>
+          <input type="date" class="form-control" id="phone-date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="callResult">Resultado de Llamada</label>
+        <select class="form-control" id="phone-result-select" onchange="setPhoneResultFromSelect(this)"></select>
+        <input type="text" class="form-control mt-1" id="phone-result" placeholder="O escribe manualmente...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-phone')" data-i18n="cancel">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePhoneRecord()" data-i18n="save">Guardar</button>
+    </div>
+  </div>
+</div>
 
-// Check if already logged in
-Auth.onReady((user) => {
-  if (user) {
-    redirectByRole(Auth.currentRole);
-  }
+<script src="/assets/i18n.js"></script>
+<script type="module">
+import { Auth, DB, Utils } from '/assets/firebase.js';
+
+let myTerritories = [], currentTerrId = null, addresses = [], phoneRecords = [], settings = {};
+let editingAddrId = null, editingPhoneId = null;
+
+window.addEventListener('DOMContentLoaded', () => Lang.init());
+
+Auth.onReady(async (user) => {
+  if (!user) { window.location.href = '/index.html'; return; }
+  const profile = Auth.currentProfile;
+
+  document.getElementById('user-name').textContent = profile?.name || user.email;
+  document.getElementById('user-email').textContent = user.email;
+  document.getElementById('coord-greeting').textContent = `${Lang.t('myTerritories')} — ${profile?.name || ''}`;
+
+  settings = await DB.getSettings();
+  await loadMyTerritories(profile.uid);
+
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  Lang.apply();
 });
 
-window.doLogin = async function() {
-  const email = document.getElementById('inp-email').value.trim();
-  const password = document.getElementById('inp-password').value;
-  const errEl = document.getElementById('login-error');
-  const btn = document.getElementById('btn-login');
+async function loadMyTerritories(coordId) {
+  const all = await DB.getTerritories();
+  const now = Utils.today();
+  myTerritories = all.filter(t => t.currentAssign?.coordinatorId === coordId && (t.state === 'Asignado' || t.state === 'Vencido'));
+  // Sync expired
+  myTerritories.forEach(t => { if (t.currentAssign?.expiresDate < now) t.state = 'Vencido'; });
+  renderDashboard();
+}
 
-  if (!email || !password) {
-    errEl.textContent = Lang.t('errorRequired');
-    errEl.classList.add('show');
+function renderDashboard() {
+  const assigned = myTerritories.filter(t => t.state === 'Asignado').length;
+  const expired = myTerritories.filter(t => t.state === 'Vencido').length;
+
+  document.getElementById('coord-stats').innerHTML = `
+    <div class="stat-card stat-blue"><div class="stat-label">${Lang.t('myAssigned')}</div><div class="stat-value">${assigned}</div></div>
+    <div class="stat-card stat-red"><div class="stat-label">${Lang.t('myExpired')}</div><div class="stat-value">${expired}</div></div>
+    <div class="stat-card stat-muted"><div class="stat-label">Total</div><div class="stat-value">${myTerritories.length}</div></div>`;
+
+  if (expired > 0) document.getElementById('expired-warning').style.display = 'block';
+  else document.getElementById('expired-warning').style.display = 'none';
+
+  if (!myTerritories.length) {
+    document.getElementById('my-territory-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📋</div><p data-i18n="noMyTerritories">${Lang.t('noMyTerritories')}</p></div>`;
     return;
   }
 
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span>`;
-  errEl.classList.remove('show');
+  document.getElementById('my-territory-grid').innerHTML = myTerritories.map(t => {
+    const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+    const isExp = t.state === 'Vencido';
+    return `
+    <div class="territory-card" style="${isExp ? 'border-color:var(--red)' : ''}">
+      <div class="tc-map">${t.mapUrl ? `<img src="${t.mapUrl}" alt="${t.number}">` : `<div class="no-map">🗺️</div>`}</div>
+      <div class="tc-body">
+        <div class="tc-number">Territorio ${t.number}</div>
+        <div class="tc-streets">${t.streets || '—'}</div>
+        <div class="meta mt-1">
+          <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? Lang.t('statusExpired') : Lang.t('statusAssigned')}</span>
+          <span class="badge badge-gray">Expira: ${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
+          ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du}d</span>` : ''}
+        </div>
+      </div>
+      <div class="tc-footer">
+        <button class="btn btn-primary btn-sm" onclick="openTerritory('${t.id}')">📋 ${Lang.t('viewTerritory')}</button>
+        ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
 
-  try {
-    await Auth.login(email, password);
-    // onReady will fire and redirect
-  } catch (err) {
-    errEl.textContent = Lang.t('loginError');
-    errEl.classList.add('show');
-    btn.disabled = false;
-    btn.innerHTML = `<span data-i18n="loginBtn">${Lang.t('loginBtn')}</span>`;
+window.openTerritory = async function(terrId) {
+  currentTerrId = terrId;
+  const t = myTerritories.find(x => x.id === terrId);
+  if (!t) return;
+
+  // Title and streets
+  document.getElementById('terr-title').textContent = `Territorio ${t.number}`;
+  document.getElementById('terr-streets').textContent = t.streets || '—';
+
+  // Big map
+  if (t.mapUrl) {
+    document.getElementById('terr-map-img').src = t.mapUrl;
+    document.getElementById('terr-map-container').style.display = 'block';
+  } else {
+    document.getElementById('terr-map-container').style.display = 'none';
+  }
+
+  // Info grid
+  const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+  const isExp = t.state === 'Vencido';
+  document.getElementById('terr-info-grid').innerHTML = `
+    <div style="background:var(--surface2);border-radius:8px;padding:0.7rem 0.9rem;">
+      <div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">Estado</div>
+      <div style="font-weight:600;font-size:0.9rem;margin-top:0.2rem;">
+        <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? Lang.t('statusExpired') : Lang.t('statusAssigned')}</span>
+        ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow" style="margin-left:0.3rem;">${du}d</span>` : ''}
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:0.7rem 0.9rem;">
+      <div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);" data-i18n="expiresDate">Expira</div>
+      <div style="font-weight:600;font-size:0.9rem;margin-top:0.2rem;${isExp ? 'color:var(--red)' : ''}">${Utils.fmtDate(t.currentAssign?.expiresDate)}</div>
+    </div>`;
+
+  // Start point
+  if (t.startPoint) {
+    document.getElementById('terr-start-text').textContent = t.startPoint;
+    document.getElementById('terr-start-point').style.display = 'block';
+  } else {
+    document.getElementById('terr-start-point').style.display = 'none';
+  }
+
+  // Nav button
+  const navBtn = document.getElementById('terr-nav-btn');
+  const navBtnHeader = document.getElementById('btn-nav-link');
+  if (t.mapLink) {
+    navBtn.href = t.mapLink;
+    navBtn.style.display = 'block';
+    navBtnHeader.href = t.mapLink;
+    navBtnHeader.style.display = 'inline-flex';
+  } else {
+    navBtn.style.display = 'none';
+    navBtnHeader.style.display = 'none';
+  }
+
+  // Notes
+  if (t.notes) {
+    document.getElementById('terr-notes-display').textContent = t.notes;
+    document.getElementById('terr-notes-display').style.display = 'block';
+  } else {
+    document.getElementById('terr-notes-display').style.display = 'none';
+  }
+
+  // Load addresses and phone records
+  [addresses, phoneRecords] = await Promise.all([DB.getAddresses(terrId), DB.getPhoneRecords(terrId)]);
+  renderDoorTable();
+  renderPhoneTable();
+
+  showSection('territories');
+  switchTab('door');
+};
+
+window.openNavLink = function() {};
+
+window.copyShareLink = function() {
+  if (!currentTerrId) return;
+  const url = `${window.location.origin}/view/?t=${currentTerrId}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => Utils.toast(Lang.t('linkCopied'), 'success'));
+  } else {
+    prompt(Lang.t('shareLink'), url);
   }
 };
 
-window.showReset = function() {
-  document.getElementById('modal-reset').classList.add('open');
+// ── Door to door ──────────────────────────────────────────────────────────────
+function renderDoorTable() {
+  document.getElementById('door-count').textContent = `${addresses.length} ${Lang.t('addresses')}`;
+  if (!addresses.length) {
+    document.getElementById('door-table').innerHTML = `<tr><td colspan="5" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noAddresses')}</td></tr>`;
+    return;
+  }
+  document.getElementById('door-table').innerHTML = addresses.map(a => {
+    const hasVisit = !!a.visitDate;
+    return `<tr style="${hasVisit ? 'background:rgba(54,211,153,0.04)' : ''}">
+      <td><strong>${a.address}</strong></td>
+      <td style="color:var(--muted)">${a.street || '—'}</td>
+      <td>
+        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','observation','${escHtml(a.observation||'')}',this)">
+          ${a.observation ? `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.72rem;background:rgba(245,197,24,0.12);color:var(--yellow);font-family:var(--font-mono);">${a.observation}</span>` : '<span style="color:var(--muted)">—</span>'}
+        </span>
+      </td>
+      <td>
+        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','comment','${escHtml(a.comment||'')}',this)">
+          ${a.comment || '<span style="color:var(--muted)">—</span>'}
+        </span>
+      </td>
+      <td>
+        <div class="flex gap-1 items-center">
+          <span class="editable-cell" title="Click para editar fecha" onclick="inlineEditDoor('${a.id}','visitDate','${a.visitDate||''}',this)">
+            ${a.visitDate ? Utils.fmtDate(a.visitDate) : '<span style="color:var(--muted)">—</span>'}
+          </span>
+          ${hasVisit ? `<button onclick="clearDoorField('${a.id}','visitDate')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0.1rem 0.3rem;" title="Borrar fecha">✕</button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function escHtml(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+window.inlineEditDoor = function(id, field, current, cell) {
+  const isDate = field === 'visitDate';
+  const input = document.createElement(isDate ? 'input' : 'input');
+  input.type = isDate ? 'date' : 'text';
+  input.value = current;
+  input.className = 'cell-input';
+  cell.innerHTML = '';
+  cell.appendChild(input);
+  input.focus();
+
+  const save = async () => {
+    const val = input.value;
+    const addr = addresses.find(a => a.id === id);
+    if (!addr) return;
+    addr[field] = val;
+    await DB.saveAddress(currentTerrId, { [field]: val }, id);
+    renderDoorTable();
+  };
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderDoorTable(); });
 };
 
-window.doReset = async function() {
-  const email = document.getElementById('reset-email').value.trim();
-  if (!email) return;
+window.openAddAddressModal = function(id = null) {
+  editingAddrId = id;
+  document.getElementById('addr-edit-id').value = id || '';
+  document.getElementById('addr-modal-title').textContent = id ? Lang.t('edit') : Lang.t('addAddress');
+
+  // Populate observation dropdown
+  const obs = settings.doorStatuses || [];
+  document.getElementById('addr-obs-select').innerHTML = `<option value="">— Seleccionar estado —</option>` + obs.map(s => `<option value="${s}">${s}</option>`).join('');
+  document.getElementById('phone-result-select');
+
+  if (id) {
+    const a = addresses.find(x => x.id === id);
+    document.getElementById('addr-address').value = a.address || '';
+    document.getElementById('addr-street').value = a.street || '';
+    document.getElementById('addr-observation').value = a.observation || '';
+    document.getElementById('addr-comment').value = a.comment || '';
+    document.getElementById('addr-visit-date').value = a.visitDate || '';
+  } else {
+    document.getElementById('addr-address').value = '';
+    document.getElementById('addr-street').value = '';
+    document.getElementById('addr-observation').value = '';
+    document.getElementById('addr-comment').value = '';
+    document.getElementById('addr-visit-date').value = '';
+  }
+  document.getElementById('modal-add-address').classList.add('open');
+};
+
+window.setObsFromSelect = function(sel) {
+  if (sel.value) document.getElementById('addr-observation').value = sel.value;
+};
+
+window.saveAddress = async function() {
+  const id = document.getElementById('addr-edit-id').value || null;
+  const data = {
+    address: document.getElementById('addr-address').value.trim(),
+    street: document.getElementById('addr-street').value.trim(),
+    observation: document.getElementById('addr-observation').value.trim(),
+    comment: document.getElementById('addr-comment').value.trim(),
+    visitDate: document.getElementById('addr-visit-date').value,
+    order: id ? addresses.find(a => a.id === id)?.order ?? addresses.length : addresses.length
+  };
   try {
-    await Auth.resetPassword(email);
-    Utils.toast(Lang.t('resetSent'), 'success');
-    closeModal('modal-reset');
+    await DB.saveAddress(currentTerrId, data, id);
+    addresses = await DB.getAddresses(currentTerrId);
+    renderDoorTable();
+    closeModal('modal-add-address');
+    Utils.toast(Lang.t('savedSuccess'), 'success');
   } catch (err) {
-    Utils.toast(Lang.t('error') + ': ' + err.message, 'error');
+    Utils.toast(Lang.t('errorSaving'), 'error');
   }
 };
 
-window.redirectByRole = function(role) {
-  if (role === 'admin') window.location.href = '/admin/';
-  else if (role === 'coordinator') window.location.href = '/coordinator/';
-  else window.location.href = '/coordinator/';
+window.deleteAddress = async function(id) {
+  if (!Utils.confirm(Lang.t('confirmDelete'))) return;
+  await DB.deleteAddress(currentTerrId, id);
+  addresses = await DB.getAddresses(currentTerrId);
+  renderDoorTable();
 };
 
-window.closeModal = function(id) {
-  document.getElementById(id).classList.remove('open');
+// ── Phone records ─────────────────────────────────────────────────────────────
+function renderPhoneTable() {
+  document.getElementById('phone-count').textContent = `${phoneRecords.length} ${Lang.t('totalRecords')}`;
+  if (!phoneRecords.length) {
+    document.getElementById('phone-table').innerHTML = `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noPhoneRecords')}</td></tr>`;
+    return;
+  }
+  document.getElementById('phone-table').innerHTML = phoneRecords.map(r => `
+    <tr>
+      <td><strong>${r.address}</strong></td>
+      <td>${r.name || '—'}</td>
+      <td class="font-mono">${r.phone || '—'}</td>
+      <td>
+        <div class="flex gap-1 items-center">
+          <span class="editable-cell" title="Click para editar fecha" onclick="inlineEditPhoneDate('${r.id}',this)">
+            ${r.date ? Utils.fmtDate(r.date) : '<span class="text-muted">—</span>'}
+          </span>
+          ${r.date ? `<button class="btn btn-ghost btn-sm" style="padding:0.1rem 0.4rem;font-size:0.7rem;" onclick="clearPhoneField('${r.id}','date')" title="Borrar fecha">✕</button>` : ''}
+        </div>
+      </td>
+      <td>
+        <div class="flex gap-1 items-center">
+          <span class="editable-cell" title="Click para actualizar resultado" onclick="inlineEditPhone('${r.id}','callResult','${escHtml(r.callResult||'')}',this)">
+            ${r.callResult ? `<span class="badge badge-blue">${r.callResult}</span>` : '<span class="text-muted">— Toca para actualizar</span>'}
+          </span>
+          ${r.callResult ? `<button class="btn btn-ghost btn-sm" style="padding:0.1rem 0.4rem;font-size:0.7rem;" onclick="clearPhoneField('${r.id}','callResult')" title="Borrar resultado">✕</button>` : ''}
+        </div>
+      </td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="openAddPhoneModal('${r.id}')">✏️</button>
+      </td>
+    </tr>`).join('');
+}
+
+window.inlineEditPhone = function(id, field, current, cell) {
+  const ps = settings.phoneStatuses || [];
+  const sel = document.createElement('select');
+  sel.className = 'cell-input';
+  sel.innerHTML = `<option value="">—</option>` + ps.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('') + `<option value="__custom">Otro...</option>`;
+  cell.innerHTML = '';
+  cell.appendChild(sel);
+  sel.focus();
+
+  sel.addEventListener('change', async () => {
+    if (sel.value === '__custom') {
+      const val = prompt('Resultado:', current);
+      if (val === null) { renderPhoneTable(); return; }
+      const rec = phoneRecords.find(r => r.id === id);
+      if (rec) rec[field] = val;
+      await DB.savePhoneRecord(currentTerrId, { [field]: val }, id);
+    } else {
+      const rec = phoneRecords.find(r => r.id === id);
+      if (rec) rec[field] = sel.value;
+      await DB.savePhoneRecord(currentTerrId, { [field]: sel.value }, id);
+    }
+    renderPhoneTable();
+  });
+  sel.addEventListener('blur', () => setTimeout(renderPhoneTable, 200));
 };
 
-// Enter key support
-document.getElementById('inp-password').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') doLogin();
+window.inlineEditPhoneDate = function(id, cell) {
+  const rec = phoneRecords.find(r => r.id === id);
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.value = rec?.date || '';
+  input.className = 'cell-input';
+  cell.innerHTML = '';
+  cell.appendChild(input);
+  input.focus();
+  const save = async () => {
+    if (rec) rec.date = input.value;
+    await DB.savePhoneRecord(currentTerrId, { date: input.value }, id);
+    renderPhoneTable();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderPhoneTable(); });
+};
+
+window.clearPhoneField = async function(id, field) {
+  const rec = phoneRecords.find(r => r.id === id);
+  if (!rec) return;
+  rec[field] = '';
+  await DB.savePhoneRecord(currentTerrId, { [field]: '' }, id);
+  renderPhoneTable();
+};
+
+window.clearDoorField = async function(id, field) {
+  const addr = addresses.find(a => a.id === id);
+  if (!addr) return;
+  addr[field] = '';
+  await DB.saveAddress(currentTerrId, { [field]: '' }, id);
+  renderDoorTable();
+};
+
+window.openAddPhoneModal = function(id = null) {
+  editingPhoneId = id;
+  document.getElementById('phone-edit-id').value = id || '';
+  document.getElementById('phone-modal-title').textContent = id ? Lang.t('edit') : Lang.t('addRecord');
+
+  const ps = settings.phoneStatuses || [];
+  document.getElementById('phone-result-select').innerHTML = `<option value="">— Seleccionar resultado —</option>` + ps.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  if (id) {
+    const r = phoneRecords.find(x => x.id === id);
+    document.getElementById('phone-address').value = r.address || '';
+    document.getElementById('phone-name').value = r.name || '';
+    document.getElementById('phone-number').value = r.phone || '';
+    document.getElementById('phone-date').value = r.date || '';
+    document.getElementById('phone-result').value = r.callResult || '';
+  } else {
+    ['phone-address','phone-name','phone-number','phone-result'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('phone-date').value = Utils.today();
+  }
+  document.getElementById('modal-add-phone').classList.add('open');
+};
+
+window.setPhoneResultFromSelect = function(sel) {
+  if (sel.value) document.getElementById('phone-result').value = sel.value;
+};
+
+window.savePhoneRecord = async function() {
+  const id = document.getElementById('phone-edit-id').value || null;
+  const data = {
+    address: document.getElementById('phone-address').value.trim(),
+    name: document.getElementById('phone-name').value.trim(),
+    phone: document.getElementById('phone-number').value.trim(),
+    date: document.getElementById('phone-date').value,
+    callResult: document.getElementById('phone-result').value.trim(),
+    order: id ? phoneRecords.find(r => r.id === id)?.order ?? phoneRecords.length : phoneRecords.length
+  };
+  try {
+    await DB.savePhoneRecord(currentTerrId, data, id);
+    phoneRecords = await DB.getPhoneRecords(currentTerrId);
+    renderPhoneTable();
+    closeModal('modal-add-phone');
+    Utils.toast(Lang.t('savedSuccess'), 'success');
+  } catch (err) {
+    Utils.toast(Lang.t('errorSaving'), 'error');
+  }
+};
+
+window.deletePhoneRecord = async function(id) {
+  if (!Utils.confirm(Lang.t('confirmDelete'))) return;
+  await DB.deletePhoneRecord(currentTerrId, id);
+  phoneRecords = await DB.getPhoneRecords(currentTerrId);
+  renderPhoneTable();
+};
+
+// ── Tabs & Nav ────────────────────────────────────────────────────────────────
+window.switchTab = function(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('tab-btn-' + name).classList.add('active');
+};
+
+window.showSection = function(name) {
+  document.querySelectorAll('section[id^="sec-"]').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + name).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick')?.includes(name)) n.classList.add('active');
+  });
+  if (window.innerWidth < 768) toggleSidebar();
+};
+
+window.toggleSidebar = function() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+};
+
+window.closeModal = function(id) { document.getElementById(id)?.classList.remove('open'); };
+
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
-</script>
 
-<script src="/assets/i18n.js"></script>
-<script>
-// Init language
-document.addEventListener('DOMContentLoaded', () => Lang.init());
+window.Auth = Auth;
 </script>
 </body>
 </html>
