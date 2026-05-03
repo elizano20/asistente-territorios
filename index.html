@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2.3 - observation modal picker for mobile -->
+<!-- v2.4 - fix observation modal picker -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -480,13 +480,23 @@ window.inlineEditDoor = function(id, field, current, cell) {
 let observationTargetId = null;
 window.openObservationPicker = function(id, current) {
   observationTargetId = id;
-  const ps = settings.doorStatuses || [];
-  document.getElementById('obs-picker-buttons').innerHTML = ps.map(s =>
-    `<button class="btn ${s === current ? 'btn-primary' : 'btn-secondary'} w-full" style="justify-content:flex-start;margin-bottom:0.5rem;" onclick="selectObservation('${s}')">${s}</button>`
+  const defaults = ['Perro afuera', 'Duerme de día', 'Negocio', 'No tocar', 'Revisitar', 'Mudado'];
+  const ps = (settings.doorStatuses && settings.doorStatuses.length > 0) ? settings.doorStatuses : defaults;
+  document.getElementById('obs-picker-buttons').innerHTML = ps.map((s, i) =>
+    `<button class="btn ${s === current ? 'btn-primary' : 'btn-secondary'} w-full" style="justify-content:flex-start;margin-bottom:0.5rem;text-align:left;" data-obs-index="${i}" onclick="selectObservationByIndex(${i})">${s}</button>`
   ).join('') +
-  `<button class="btn btn-ghost w-full" style="justify-content:flex-start;margin-bottom:0.5rem;" onclick="selectObservation('')">— Limpiar observación</button>` +
+  `<hr style="border-color:var(--border);margin:0.5rem 0;">` +
+  `<button class="btn btn-ghost w-full" style="justify-content:flex-start;margin-bottom:0.5rem;" onclick="selectObservation('')">✕ Limpiar observación</button>` +
   `<button class="btn btn-ghost w-full" style="justify-content:flex-start;" onclick="selectObservationCustom()">✏️ Escribir manualmente...</button>`;
+  
+  // Store statuses for index lookup
+  window._currentObsStatuses = ps;
   document.getElementById('modal-obs-picker').classList.add('open');
+};
+
+window.selectObservationByIndex = function(i) {
+  const val = window._currentObsStatuses[i];
+  if (val !== undefined) selectObservation(val);
 };
 
 window.selectObservation = async function(val) {
