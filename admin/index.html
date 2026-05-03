@@ -676,9 +676,10 @@ window.openTerritoryModal = function(id = null) {
   document.getElementById('map-preview').style.display = 'none';
   document.getElementById('addr-preview').style.display = 'none';
   document.getElementById('phone-preview').style.display = 'none';
-  document.getElementById('map-file').value = '';
-  document.getElementById('addr-file').value = '';
-  document.getElementById('phone-file').value = '';
+  const addrFile = document.getElementById('addr-file');
+  const phoneFile = document.getElementById('phone-file');
+  if (addrFile) addrFile.value = '';
+  if (phoneFile) phoneFile.value = '';
 
   if (id) {
     const t = territories.find(x => x.id === id);
