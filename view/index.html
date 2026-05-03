@@ -120,6 +120,8 @@ async function init() {
   const params = new URLSearchParams(window.location.search);
   const terrId = params.get('t');
 
+  console.log('Territory ID from URL:', terrId);
+
   if (!terrId) { showNotFound(); return; }
 
   try {
@@ -127,6 +129,9 @@ async function init() {
       DB.getTerritory(terrId),
       DB.getAddresses(terrId)
     ]);
+
+    console.log('Territory data:', territory);
+    console.log('Addresses count:', addresses.length);
 
     if (!territory) { showNotFound(); return; }
 
