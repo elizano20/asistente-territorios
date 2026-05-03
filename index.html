@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.0 - clean rewrite, no inline handlers -->
+<!-- v3.1 - fix logout flicker + accessibility -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -218,7 +218,16 @@ Auth.onReady(async (user) => {
   const profile = Auth.currentProfile;
   if (!profile) { window.location.href = '/index.html'; return; }
   document.getElementById('dash-user-name').textContent = profile.name || user.email;
-  document.getElementById('btn-logout').addEventListener('click', () => Auth.logout());
+  document.getElementById('btn-logout').addEventListener('click', async (e) => {
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      await Auth.logout();
+    } catch {
+      window.location.href = '/index.html';
+    }
+  });
   settings = await DB.getSettings();
   await loadMyTerritories(profile.uid);
   document.getElementById('loading-screen').style.display = 'none';
