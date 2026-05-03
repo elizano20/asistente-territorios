@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2.4 - fix observation modal picker -->
+<!-- v2.5 - event delegation fix -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -428,28 +428,94 @@ function renderDoorTable() {
       <td><strong>${a.address}</strong></td>
       <td style="color:var(--muted)">${a.street || '—'}</td>
       <td>
-        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','observation','${escHtml(a.observation||'')}',this)">
+        <span class="editable-cell" data-action="obs" data-id="${a.id}" data-val="${escHtml(a.observation||'')}" title="Toca para editar">
           ${a.observation ? `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.72rem;background:rgba(245,197,24,0.12);color:var(--yellow);font-family:var(--font-mono);">${a.observation}</span>` : '<span style="color:var(--muted)">—</span>'}
         </span>
       </td>
       <td>
-        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','comment','${escHtml(a.comment||'')}',this)">
+        <span class="editable-cell" data-action="comment" data-id="${a.id}" data-val="${escHtml(a.comment||'')}" title="Toca para editar">
           ${a.comment || '<span style="color:var(--muted)">—</span>'}
         </span>
       </td>
       <td>
         <div class="flex gap-1 items-center">
-          <span class="editable-cell" title="Click para editar fecha" onclick="inlineEditDoor('${a.id}','visitDate','${a.visitDate||''}',this)">
+          <span class="editable-cell" data-action="visitDate" data-id="${a.id}" data-val="${a.visitDate||''}" title="Toca para editar fecha">
             ${a.visitDate ? Utils.fmtDate(a.visitDate) : '<span style="color:var(--muted)">—</span>'}
           </span>
-          ${hasVisit ? `<button onclick="clearDoorField('${a.id}','visitDate')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0.1rem 0.3rem;" title="Borrar fecha">✕</button>` : ''}
+          ${hasVisit ? `<button data-action="clearVisit" data-id="${a.id}" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0.1rem 0.3rem;" title="Borrar fecha">✕</button>` : ''}
         </div>
       </td>
     </tr>`;
   }).join('');
 }
 
-function escHtml(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function escHtml(str) { return (str||'').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+// Event delegation for door table
+document.addEventListener('click', function(e) {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+  const val = el.dataset.val || '';
+
+  if (action === 'obs') {
+    observationTargetId = id;
+    const defaults = ['Perro afuera', 'Duerme de día', 'Negocio', 'No tocar', 'Revisitar', 'Mudado'];
+    const ps = (settings.doorStatuses && settings.doorStatuses.length > 0) ? settings.doorStatuses : defaults;
+    window._currentObsStatuses = ps;
+    document.getElementById('obs-picker-buttons').innerHTML = ps.map((s, i) =>
+      `<button class="btn ${s === val ? 'btn-primary' : 'btn-secondary'} w-full" style="justify-content:flex-start;margin-bottom:0.5rem;text-align:left;" data-obs-index="${i}">${s}</button>`
+    ).join('') +
+    `<hr style="border-color:var(--border);margin:0.5rem 0;">` +
+    `<button class="btn btn-ghost w-full" style="justify-content:flex-start;margin-bottom:0.5rem;" data-obs-clear="1">✕ Limpiar</button>` +
+    `<button class="btn btn-ghost w-full" style="justify-content:flex-start;" data-obs-custom="1">✏️ Escribir manualmente...</button>`;
+    document.getElementById('modal-obs-picker').classList.add('open');
+  }
+  else if (action === 'comment') {
+    const input = document.createElement('input');
+    input.type = 'text'; input.value = val; input.className = 'cell-input';
+    el.innerHTML = ''; el.appendChild(input); input.focus();
+    const save = async () => {
+      const addr = addresses.find(a => a.id === id);
+      if (addr) addr.comment = input.value;
+      await DB.saveAddress(currentTerrId, { comment: input.value }, id);
+      renderDoorTable();
+    };
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e2 => { if (e2.key === 'Enter') input.blur(); if (e2.key === 'Escape') renderDoorTable(); });
+  }
+  else if (action === 'visitDate') {
+    const input = document.createElement('input');
+    input.type = 'date'; input.value = val; input.className = 'cell-input';
+    el.innerHTML = ''; el.appendChild(input); input.focus();
+    const save = async () => {
+      const addr = addresses.find(a => a.id === id);
+      if (addr) addr.visitDate = input.value;
+      await DB.saveAddress(currentTerrId, { visitDate: input.value }, id);
+      renderDoorTable();
+    };
+    input.addEventListener('blur', save);
+    input.addEventListener('change', save);
+  }
+  else if (action === 'clearVisit') {
+    const addr = addresses.find(a => a.id === id);
+    if (addr) addr.visitDate = '';
+    DB.saveAddress(currentTerrId, { visitDate: '' }, id).then(renderDoorTable);
+  }
+  // Obs picker button clicks
+  else if (el.dataset.obsIndex !== undefined) {
+    const val2 = window._currentObsStatuses[parseInt(el.dataset.obsIndex)];
+    selectObservation(val2);
+  }
+  else if (el.dataset.obsClear) selectObservation('');
+  else if (el.dataset.obsCustom) {
+    document.getElementById('modal-obs-picker').classList.remove('open');
+    const addr = addresses.find(a => a.id === observationTargetId);
+    const v = prompt('Observación:', addr?.observation || '');
+    if (v !== null) selectObservation(v);
+  }
+});
 
 window.inlineEditDoor = function(id, field, current, cell) {
   if (field === 'observation') {
