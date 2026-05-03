@@ -75,30 +75,34 @@
         <div style="max-width:900px;margin:0 auto;padding:1.5rem 1rem;">
 
           <!-- Territory card — matches publisher layout -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem;margin-bottom:1.5rem;">
-            <h1 id="terr-title" style="font-family:var(--font-head);font-weight:800;font-size:1.8rem;">Territorio —</h1>
-            <p id="terr-streets" class="text-muted text-sm" style="margin-top:0.3rem;">—</p>
-
-            <!-- Big map -->
-            <div id="terr-map-container" style="display:none;width:100%;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);margin-top:1rem;margin-bottom:1rem;">
-              <img id="terr-map-img" style="width:100%;display:block;object-fit:cover;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1.5rem;">
+            <div style="padding:1.4rem 1.4rem 0 1.4rem;">
+              <h1 id="terr-title" style="font-family:var(--font-head);font-weight:800;font-size:1.8rem;">Territorio —</h1>
+              <p id="terr-streets" class="text-muted text-sm" style="margin-top:0.3rem;">—</p>
             </div>
 
-            <!-- Info grid -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;" id="terr-info-grid"></div>
-
-            <!-- Start point -->
-            <div id="terr-start-point" style="display:none;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.85rem;">
-              ⭐ <strong style="color:var(--accent)">Punto de inicio:</strong> <span id="terr-start-text"></span>
+            <!-- Big map — full width, no padding -->
+            <div id="terr-map-container" style="display:none;width:100%;margin-top:1rem;">
+              <img id="terr-map-img" style="width:100%;display:block;max-height:320px;object-fit:cover;">
             </div>
 
-            <!-- Nav button -->
-            <a id="terr-nav-btn" href="#" target="_blank" style="display:none;display:block;width:100%;padding:0.9rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font-head);font-weight:700;font-size:1rem;text-align:center;cursor:pointer;margin-bottom:1rem;text-decoration:none;">
-              🧭 Abrir en Google Maps
-            </a>
+            <div style="padding:1rem 1.4rem 1.4rem 1.4rem;">
+              <!-- Info grid -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;margin-top:1rem;" id="terr-info-grid"></div>
 
-            <!-- Notes -->
-            <div id="terr-notes-display" class="text-sm text-muted" style="display:none;"></div>
+              <!-- Start point -->
+              <div id="terr-start-point" style="display:none;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.85rem;">
+                ⭐ <strong style="color:var(--accent)">Punto de inicio:</strong> <span id="terr-start-text"></span>
+              </div>
+
+              <!-- Nav button -->
+              <a id="terr-nav-btn" href="#" target="_blank" style="display:none;width:100%;padding:0.9rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font-head);font-weight:700;font-size:1rem;text-align:center;cursor:pointer;margin-bottom:1rem;text-decoration:none;">
+                🧭 Abrir en Google Maps
+              </a>
+
+              <!-- Notes -->
+              <div id="terr-notes-display" class="text-sm text-muted" style="display:none;"></div>
+            </div>
           </div>
 
           <!-- Tabs -->
@@ -436,26 +440,49 @@ function renderDoorTable() {
 function escHtml(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
 window.inlineEditDoor = function(id, field, current, cell) {
-  const isDate = field === 'visitDate';
-  const input = document.createElement(isDate ? 'input' : 'input');
-  input.type = isDate ? 'date' : 'text';
-  input.value = current;
-  input.className = 'cell-input';
-  cell.innerHTML = '';
-  cell.appendChild(input);
-  input.focus();
-
-  const save = async () => {
-    const val = input.value;
-    const addr = addresses.find(a => a.id === id);
-    if (!addr) return;
-    addr[field] = val;
-    await DB.saveAddress(currentTerrId, { [field]: val }, id);
-    renderDoorTable();
-  };
-
-  input.addEventListener('blur', save);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderDoorTable(); });
+  if (field === 'observation') {
+    // Show preset dropdown for observation
+    const ps = settings.doorStatuses || [];
+    const sel = document.createElement('select');
+    sel.className = 'cell-input';
+    sel.innerHTML = `<option value="">— Seleccionar —</option>` +
+      ps.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('') +
+      `<option value="__custom">Otro...</option>`;
+    cell.innerHTML = '';
+    cell.appendChild(sel);
+    sel.focus();
+    sel.addEventListener('change', async () => {
+      let val = sel.value;
+      if (val === '__custom') {
+        val = prompt('Observación:', current) || '';
+        if (!val) { renderDoorTable(); return; }
+      }
+      const addr = addresses.find(a => a.id === id);
+      if (addr) addr[field] = val;
+      await DB.saveAddress(currentTerrId, { [field]: val }, id);
+      renderDoorTable();
+    });
+    sel.addEventListener('blur', () => setTimeout(renderDoorTable, 200));
+  } else {
+    const isDate = field === 'visitDate';
+    const input = document.createElement('input');
+    input.type = isDate ? 'date' : 'text';
+    input.value = current;
+    input.className = 'cell-input';
+    cell.innerHTML = '';
+    cell.appendChild(input);
+    input.focus();
+    const save = async () => {
+      const val = input.value;
+      const addr = addresses.find(a => a.id === id);
+      if (!addr) return;
+      addr[field] = val;
+      await DB.saveAddress(currentTerrId, { [field]: val }, id);
+      renderDoorTable();
+    };
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderDoorTable(); });
+  }
 };
 
 window.openAddAddressModal = function(id = null) {
@@ -519,7 +546,7 @@ window.deleteAddress = async function(id) {
 
 // ── Phone records ─────────────────────────────────────────────────────────────
 function renderPhoneTable() {
-  document.getElementById('phone-count').textContent = `${phoneRecords.length} ${Lang.t('totalRecords')}`;
+  document.getElementById('phone-count').textContent = `${phoneRecords.length} registros`;
   if (!phoneRecords.length) {
     document.getElementById('phone-table').innerHTML = `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noPhoneRecords')}</td></tr>`;
     return;
