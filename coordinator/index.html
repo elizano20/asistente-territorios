@@ -1,248 +1,205 @@
 <!DOCTYPE html>
-<!-- v2.1 - observation dropdown + phone add button fix -->
+<!-- v3.0 - clean rewrite, no inline handlers -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coordinador — Asistente de Territorios</title>
+<title>Coordinador — TerriOS</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/app.css">
+<style>
+  .terr-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
+  .terr-card-map{width:100%;height:160px;object-fit:cover;display:block;}
+  .terr-card-body{padding:1rem 1.2rem;}
+  .terr-card-num{font-family:var(--font-head);font-weight:800;font-size:1.4rem;}
+  .terr-card-streets{color:var(--muted);font-size:0.82rem;margin-top:0.2rem;}
+  .terr-card-footer{padding:0.7rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;flex-wrap:wrap;}
+  .detail-map{width:100%;display:block;max-height:300px;object-fit:cover;}
+  .detail-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
+  .detail-header-body{padding:1.2rem;}
+  .detail-title{font-family:var(--font-head);font-weight:800;font-size:1.6rem;}
+  .detail-streets{color:var(--muted);font-size:0.85rem;margin-top:0.2rem;}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin:1rem 0;}
+  .info-box{background:var(--surface2);border-radius:8px;padding:0.7rem 0.9rem;}
+  .info-box-label{font-family:var(--font-mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
+  .info-box-value{font-weight:600;font-size:0.9rem;margin-top:0.2rem;}
+  .start-box{background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:8px;padding:0.7rem 0.9rem;font-size:0.85rem;margin-bottom:0.8rem;}
+  .nav-btn-full{display:block;width:100%;padding:0.85rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font-head);font-weight:700;font-size:1rem;text-align:center;cursor:pointer;text-decoration:none;margin-bottom:0.5rem;}
+  .nav-btn-full:hover{background:#3a7de8;color:#fff;text-decoration:none;}
+  .addr-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
+  .addr-section-header{padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .addr-section-title{font-family:var(--font-head);font-weight:700;font-size:0.95rem;}
+  .addr-row{display:flex;align-items:center;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.5rem;flex-wrap:wrap;}
+  .addr-row:last-child{border-bottom:none;}
+  .addr-row.visited{background:rgba(54,211,153,0.04);}
+  .addr-num{font-weight:700;font-size:0.9rem;min-width:70px;}
+  .addr-street{color:var(--muted);font-size:0.82rem;min-width:90px;}
+  .addr-obs{flex:1;font-size:0.82rem;}
+  .obs-tag{display:inline-block;padding:0.15rem 0.6rem;border-radius:4px;font-size:0.72rem;background:rgba(245,197,24,0.12);color:var(--yellow);font-family:var(--font-mono);}
+  .addr-date{font-size:0.78rem;color:var(--muted);}
+  .edit-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;cursor:pointer;color:var(--text);}
+  .edit-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .phone-row{display:flex;align-items:flex-start;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.5rem;flex-wrap:wrap;}
+  .phone-row:last-child{border-bottom:none;}
+  .preset-btn{display:block;width:100%;text-align:left;padding:0.7rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:0.88rem;margin-bottom:0.4rem;transition:all .15s;}
+  .preset-btn:hover,.preset-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1rem;}
+  .tab-btn{padding:0.7rem 1.2rem;font-family:var(--font-mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+  .page{padding:1rem;max-width:900px;margin:0 auto;}
+  .sticky-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--border);padding:0.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;}
+</style>
 </head>
 <body>
-
-<div id="loading-screen" class="loading-screen">
-  <div class="spinner"></div>
-  <span data-i18n="loading">Cargando...</span>
-</div>
+<div id="loading-screen" class="loading-screen"><div class="spinner"></div><span>Cargando...</span></div>
 
 <div id="app" style="display:none">
-  <div class="topbar">
-    <button class="hamburger" onclick="toggleSidebar()">☰</button>
-    <span class="topbar-logo">Terri<span>·</span>OS</span>
-    <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
-  </div>
-  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-  <div class="app-layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <div class="app-name">Terri<span>·</span>OS</div>
-        <div class="app-role" data-i18n="coordinator">Coordinador</div>
+  <div id="view-dashboard">
+    <div class="sticky-bar">
+      <span style="font-family:var(--font-head);font-weight:800;">Terri<span style="color:var(--accent)">·</span>OS</span>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <span id="dash-user-name" style="font-size:0.82rem;color:var(--muted);"></span>
+        <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
+        <button class="btn btn-ghost btn-sm" id="btn-logout">Salir</button>
       </div>
-      <nav class="sidebar-nav">
-        <a class="nav-item active" href="#" onclick="showSection('dashboard')"><span class="icon">📊</span><span data-i18n="navHome">Inicio</span></a>
-      </nav>
-      <div class="sidebar-bottom">
-        <div class="sidebar-user">
-          <strong id="user-name">—</strong>
-          <span class="text-xs text-muted" id="user-email"></span>
-        </div>
-        <div style="display:flex;gap:0.5rem;">
-          <button class="btn btn-ghost btn-sm" onclick="Auth.logout()" style="flex:1" data-i18n="logout">Salir</button>
-          <button class="lang-toggle" id="lang-toggle-sidebar" onclick="Lang.toggle()">EN</button>
+    </div>
+    <div class="page">
+      <div id="dash-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem;margin-bottom:1.5rem;"></div>
+      <div id="expired-banner" style="display:none;background:rgba(251,111,111,0.08);border:1px solid rgba(251,111,111,0.3);border-radius:var(--radius);padding:0.8rem 1rem;color:var(--red);font-size:0.85rem;margin-bottom:1rem;">
+        ⚠️ Tienes territorios vencidos. Por favor devuélvelos lo antes posible.
+      </div>
+      <h3 style="font-family:var(--font-head);margin-bottom:1rem;" id="dash-heading">Mis Territorios</h3>
+      <div id="my-terr-list"></div>
+    </div>
+  </div>
+
+  <div id="view-detail" style="display:none">
+    <div class="sticky-bar">
+      <button class="btn btn-ghost btn-sm" id="btn-back">← Regresar</button>
+      <div style="display:flex;gap:0.5rem;">
+        <a id="detail-nav-btn" href="#" target="_blank" class="btn btn-secondary btn-sm" style="display:none">🧭 Navegar</a>
+        <button class="btn btn-secondary btn-sm" id="btn-share">🔗 Publicadores</button>
+      </div>
+    </div>
+    <div class="page">
+      <div class="detail-header">
+        <img id="detail-map-img" class="detail-map" style="display:none" alt="Mapa">
+        <div class="detail-header-body">
+          <div class="detail-title" id="detail-title">—</div>
+          <div class="detail-streets" id="detail-streets">—</div>
+          <div class="info-grid" id="detail-info"></div>
+          <div class="start-box" id="detail-start" style="display:none">
+            ⭐ <strong style="color:var(--accent)">Punto de inicio:</strong> <span id="detail-start-text"></span>
+          </div>
+          <a id="detail-nav-full" href="#" target="_blank" class="nav-btn-full" style="display:none">🧭 Abrir en Google Maps</a>
         </div>
       </div>
-    </aside>
 
-    <main class="main-content">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="door">🚪 Casa en Casa</button>
+        <button class="tab-btn" data-tab="phone">📞 Telefónico</button>
+      </div>
 
-      <!-- DASHBOARD -->
-      <section id="sec-dashboard">
-        <div class="page-header">
-          <h2 id="coord-greeting">Mis Territorios</h2>
+      <div class="tab-pane active" id="tab-door">
+        <div class="addr-section">
+          <div class="addr-section-header">
+            <span class="addr-section-title">Registro de Casa en Casa</span>
+            <span class="text-muted text-sm" id="door-count"></span>
+          </div>
+          <div id="door-list"></div>
         </div>
-        <div class="page-body">
-          <div class="stats-grid" id="coord-stats"></div>
+      </div>
 
-          <!-- Expired warning -->
-          <div id="expired-warning" style="display:none" class="mb-3" style="background:rgba(251,111,111,0.08);border:1px solid rgba(251,111,111,0.3);border-radius:var(--radius);padding:1rem 1.2rem;color:var(--red);font-size:0.85rem;">
-            ⚠️ <span data-i18n="expiredWarning">Los territorios en rojo están expirados.</span>
+      <div class="tab-pane" id="tab-phone">
+        <div class="addr-section">
+          <div class="addr-section-header">
+            <span class="addr-section-title">Territorio Telefónico</span>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <span class="text-muted text-sm" id="phone-count"></span>
+              <button class="btn btn-primary btn-sm" id="btn-add-phone">+ Agregar</button>
+            </div>
           </div>
-
-          <div class="territory-grid" id="my-territory-grid"></div>
+          <div id="phone-list"></div>
         </div>
-      </section>
-
-      <!-- TERRITORY DETAIL -->
-      <section id="sec-territories" style="display:none">
-        <div class="page-header" style="position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--border);">
-          <button class="btn btn-ghost btn-sm" onclick="showSection('dashboard')">← <span data-i18n="back">Regresar</span></button>
-          <div class="flex gap-1">
-            <a id="btn-nav-link" href="#" target="_blank" class="btn btn-secondary btn-sm" style="display:none">🧭 Navegar</a>
-            <button class="btn btn-secondary btn-sm" onclick="copyShareLink()">🔗 <span data-i18n="shareLink">Publicadores</span></button>
-          </div>
-        </div>
-
-        <div style="max-width:900px;margin:0 auto;padding:1.5rem 1rem;">
-
-          <!-- Territory card — matches publisher layout -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1.5rem;">
-            <div style="padding:1.4rem 1.4rem 0 1.4rem;">
-              <h1 id="terr-title" style="font-family:var(--font-head);font-weight:800;font-size:1.8rem;">Territorio —</h1>
-              <p id="terr-streets" class="text-muted text-sm" style="margin-top:0.3rem;">—</p>
-            </div>
-
-            <!-- Big map — full width, no padding -->
-            <div id="terr-map-container" style="display:none;width:100%;margin-top:1rem;">
-              <img id="terr-map-img" style="width:100%;display:block;max-height:320px;object-fit:cover;">
-            </div>
-
-            <div style="padding:1rem 1.4rem 1.4rem 1.4rem;">
-              <!-- Info grid -->
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;margin-top:1rem;" id="terr-info-grid"></div>
-
-              <!-- Start point -->
-              <div id="terr-start-point" style="display:none;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.85rem;">
-                ⭐ <strong style="color:var(--accent)">Punto de inicio:</strong> <span id="terr-start-text"></span>
-              </div>
-
-              <!-- Nav button -->
-              <a id="terr-nav-btn" href="#" target="_blank" style="display:none;width:100%;padding:0.9rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font-head);font-weight:700;font-size:1rem;text-align:center;cursor:pointer;margin-bottom:1rem;text-decoration:none;">
-                🧭 Abrir en Google Maps
-              </a>
-
-              <!-- Notes -->
-              <div id="terr-notes-display" class="text-sm text-muted" style="display:none;"></div>
-            </div>
-          </div>
-
-          <!-- Tabs -->
-          <div class="tabs">
-            <div class="tab active" id="tab-btn-door" onclick="switchTab('door')">🚪 <span data-i18n="addresses">Casa en Casa</span></div>
-            <div class="tab" id="tab-btn-phone" onclick="switchTab('phone')">📞 <span data-i18n="phoneTerritory">Telefónico</span></div>
-          </div>
-
-          <!-- Door to door tab -->
-          <div class="tab-content active" id="tab-door">
-            <div class="address-table">
-              <div style="padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-family:var(--font-head);font-weight:700;">Registro de Casa en Casa</span>
-                <span class="text-muted text-sm" id="door-count"></span>
-              </div>
-              <div style="overflow-x:auto;">
-                <table>
-                  <thead><tr>
-                    <th data-i18n="address">Dirección</th>
-                    <th data-i18n="street">Calle</th>
-                    <th data-i18n="observation">Observación</th>
-                    <th data-i18n="comment">Comentario</th>
-                    <th data-i18n="visitDate">Fecha Visita</th>
-                  </tr></thead>
-                  <tbody id="door-table"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Phone tab -->
-          <div class="tab-content" id="tab-phone">
-            <div class="address-table">
-              <div style="padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-                <span style="font-family:var(--font-head);font-weight:700;" data-i18n="phoneTerritory">Territorio Telefónico</span>
-                <div class="flex gap-1 items-center">
-                  <span class="text-muted text-sm" id="phone-count"></span>
-                  <button class="btn btn-primary btn-sm" onclick="openAddPhoneModal()">+ Agregar</button>
-                </div>
-              </div>
-              <div style="overflow-x:auto;">
-                <table>
-                  <thead><tr>
-                    <th data-i18n="address">Dirección</th>
-                    <th data-i18n="name">Nombre</th>
-                    <th data-i18n="phone">Teléfono</th>
-                    <th data-i18n="date">Fecha</th>
-                    <th data-i18n="callResult">Resultado</th>
-                    <th></th>
-                  </tr></thead>
-                  <tbody id="phone-table"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-    </main>
+      </div>
+    </div>
   </div>
+
 </div>
 
-<!-- Add Address Modal -->
-<div class="modal-overlay" id="modal-add-address">
+<!-- Edit Address Modal -->
+<div class="modal-overlay" id="modal-addr">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" id="addr-modal-title" data-i18n="addAddress">Agregar Dirección</span>
-      <button class="modal-close" onclick="closeModal('modal-add-address')">✕</button>
+      <span class="modal-title">Editar Dirección</span>
+      <button class="modal-close" id="cls-addr">✕</button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="addr-edit-id">
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label class="form-label" data-i18n="address">Dirección</label>
-          <input type="text" class="form-control" id="addr-address" placeholder="4700">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="street">Calle</label>
-          <input type="text" class="form-control" id="addr-street" placeholder="58th St">
-        </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1rem;">
+        <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--muted);">DIRECCIÓN</div>
+        <div id="edit-addr-label" style="font-weight:700;margin-top:0.2rem;"></div>
       </div>
       <div class="form-group">
-        <label class="form-label" data-i18n="observation">Observación</label>
-        <select class="form-control" id="addr-obs-select" onchange="setObsFromSelect(this)"></select>
-        <input type="text" class="form-control mt-1" id="addr-observation" placeholder="O escribe manualmente...">
+        <label class="form-label">Observación</label>
+        <div id="obs-btns"></div>
+        <input type="text" class="form-control" id="edit-obs" placeholder="O escribe manualmente..." style="margin-top:0.3rem;">
       </div>
       <div class="form-group">
-        <label class="form-label" data-i18n="comment">Comentario</label>
-        <textarea class="form-control" id="addr-comment" rows="2"></textarea>
+        <label class="form-label">Comentario</label>
+        <textarea class="form-control" id="edit-comment" rows="2"></textarea>
       </div>
       <div class="form-group">
-        <label class="form-label" data-i18n="visitDate">Fecha de Visita</label>
-        <input type="date" class="form-control" id="addr-visit-date">
+        <label class="form-label">Fecha de Visita</label>
+        <input type="date" class="form-control" id="edit-visit">
+        <button class="btn btn-ghost btn-sm" id="clear-visit" style="margin-top:0.3rem;">✕ Borrar fecha</button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-add-address')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveAddress()" data-i18n="save">Guardar</button>
+      <button class="btn btn-secondary" id="cls-addr-2">Cancelar</button>
+      <button class="btn btn-green" id="save-addr">Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- Add Phone Record Modal -->
-<div class="modal-overlay" id="modal-add-phone">
+<!-- Edit Phone Modal -->
+<div class="modal-overlay" id="modal-phone">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" id="phone-modal-title" data-i18n="addRecord">Agregar Registro</span>
-      <button class="modal-close" onclick="closeModal('modal-add-phone')">✕</button>
+      <span class="modal-title" id="phone-modal-title">Agregar Registro</span>
+      <button class="modal-close" id="cls-phone">✕</button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="phone-edit-id">
       <div class="form-grid-2">
         <div class="form-group">
-          <label class="form-label" data-i18n="address">Dirección</label>
-          <input type="text" class="form-control" id="phone-address" placeholder="4700">
+          <label class="form-label">Dirección</label>
+          <input type="text" class="form-control" id="edit-ph-addr">
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="name">Nombre</label>
-          <input type="text" class="form-control" id="phone-name">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-control" id="edit-ph-name">
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="phone">Teléfono</label>
-          <input type="tel" class="form-control" id="phone-number">
+          <label class="form-label">Teléfono</label>
+          <input type="tel" class="form-control" id="edit-ph-num">
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="date">Fecha</label>
-          <input type="date" class="form-control" id="phone-date">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-control" id="edit-ph-date">
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label" data-i18n="callResult">Resultado de Llamada</label>
-        <select class="form-control" id="phone-result-select" onchange="setPhoneResultFromSelect(this)"></select>
-        <input type="text" class="form-control mt-1" id="phone-result" placeholder="O escribe manualmente...">
+        <label class="form-label">Resultado de Llamada</label>
+        <div id="phone-result-btns"></div>
+        <input type="text" class="form-control" id="edit-ph-result" placeholder="O escribe manualmente..." style="margin-top:0.3rem;">
+        <button class="btn btn-ghost btn-sm" id="clear-ph-result" style="margin-top:0.3rem;">✕ Borrar resultado</button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-add-phone')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="savePhoneRecord()" data-i18n="save">Guardar</button>
+      <button class="btn btn-secondary" id="cls-phone-2">Cancelar</button>
+      <button class="btn btn-green" id="save-phone">Guardar</button>
     </div>
   </div>
 </div>
@@ -251,22 +208,19 @@
 <script type="module">
 import { Auth, DB, Utils } from '/assets/firebase.js';
 
-let myTerritories = [], currentTerrId = null, addresses = [], phoneRecords = [], settings = {};
-let editingAddrId = null, editingPhoneId = null;
+let myTerritories = [], addresses = [], phoneRecords = [], settings = {};
+let currentTerrId = null, editingAddrId = null, editingPhoneId = null;
 
-window.addEventListener('DOMContentLoaded', () => Lang.init());
+document.addEventListener('DOMContentLoaded', () => Lang.init());
 
 Auth.onReady(async (user) => {
   if (!user) { window.location.href = '/index.html'; return; }
   const profile = Auth.currentProfile;
-
-  document.getElementById('user-name').textContent = profile?.name || user.email;
-  document.getElementById('user-email').textContent = user.email;
-  document.getElementById('coord-greeting').textContent = `${Lang.t('myTerritories')} — ${profile?.name || ''}`;
-
+  if (!profile) { window.location.href = '/index.html'; return; }
+  document.getElementById('dash-user-name').textContent = profile.name || user.email;
+  document.getElementById('btn-logout').addEventListener('click', () => Auth.logout());
   settings = await DB.getSettings();
   await loadMyTerritories(profile.uid);
-
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   Lang.apply();
@@ -276,7 +230,6 @@ async function loadMyTerritories(coordId) {
   const all = await DB.getTerritories();
   const now = Utils.today();
   myTerritories = all.filter(t => t.currentAssign?.coordinatorId === coordId && (t.state === 'Asignado' || t.state === 'Vencido'));
-  // Sync expired
   myTerritories.forEach(t => { if (t.currentAssign?.expiresDate < now) t.state = 'Vencido'; });
   renderDashboard();
 }
@@ -284,443 +237,167 @@ async function loadMyTerritories(coordId) {
 function renderDashboard() {
   const assigned = myTerritories.filter(t => t.state === 'Asignado').length;
   const expired = myTerritories.filter(t => t.state === 'Vencido').length;
-
-  document.getElementById('coord-stats').innerHTML = `
-    <div class="stat-card stat-blue"><div class="stat-label">${Lang.t('myAssigned')}</div><div class="stat-value">${assigned}</div></div>
-    <div class="stat-card stat-red"><div class="stat-label">${Lang.t('myExpired')}</div><div class="stat-value">${expired}</div></div>
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card stat-blue"><div class="stat-label">Asignados</div><div class="stat-value">${assigned}</div></div>
+    <div class="stat-card stat-red"><div class="stat-label">Vencidos</div><div class="stat-value">${expired}</div></div>
     <div class="stat-card stat-muted"><div class="stat-label">Total</div><div class="stat-value">${myTerritories.length}</div></div>`;
-
-  if (expired > 0) document.getElementById('expired-warning').style.display = 'block';
-  else document.getElementById('expired-warning').style.display = 'none';
-
+  document.getElementById('expired-banner').style.display = expired > 0 ? 'block' : 'none';
   if (!myTerritories.length) {
-    document.getElementById('my-territory-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📋</div><p data-i18n="noMyTerritories">${Lang.t('noMyTerritories')}</p></div>`;
+    document.getElementById('my-terr-list').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No tienes territorios asignados</p></div>`;
     return;
   }
-
-  document.getElementById('my-territory-grid').innerHTML = myTerritories.map(t => {
-    const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+  const html = myTerritories.map(t => {
     const isExp = t.state === 'Vencido';
-    return `
-    <div class="territory-card" style="${isExp ? 'border-color:var(--red)' : ''}">
-      <div class="tc-map">${t.mapUrl ? `<img src="${t.mapUrl}" alt="${t.number}">` : `<div class="no-map">🗺️</div>`}</div>
-      <div class="tc-body">
-        <div class="tc-number">Territorio ${t.number}</div>
-        <div class="tc-streets">${t.streets || '—'}</div>
-        <div class="meta mt-1">
-          <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? Lang.t('statusExpired') : Lang.t('statusAssigned')}</span>
+    const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+    return `<div class="terr-card" style="${isExp ? 'border-color:var(--red)' : ''}">
+      ${t.mapUrl ? `<img class="terr-card-map" src="${t.mapUrl}" alt="${t.number}">` : ''}
+      <div class="terr-card-body">
+        <div class="terr-card-num">Territorio ${t.number}</div>
+        <div class="terr-card-streets">${t.streets || '—'}</div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.6rem;">
+          <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? 'Vencido' : 'Asignado'}</span>
           <span class="badge badge-gray">Expira: ${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
           ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du}d</span>` : ''}
         </div>
       </div>
-      <div class="tc-footer">
-        <button class="btn btn-primary btn-sm" onclick="openTerritory('${t.id}')">📋 ${Lang.t('viewTerritory')}</button>
-        ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭</a>` : ''}
+      <div class="terr-card-footer">
+        <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}">📋 Ver Territorio</button>
+        ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭 Navegar</a>` : ''}
       </div>
     </div>`;
   }).join('');
+  document.getElementById('my-terr-list').innerHTML = html;
+  document.querySelectorAll('.open-terr-btn').forEach(btn => {
+    btn.addEventListener('click', () => openTerritory(btn.dataset.id));
+  });
 }
 
-window.openTerritory = async function(terrId) {
+async function openTerritory(terrId) {
   currentTerrId = terrId;
   const t = myTerritories.find(x => x.id === terrId);
   if (!t) return;
-
-  // Title and streets
-  document.getElementById('terr-title').textContent = `Territorio ${t.number}`;
-  document.getElementById('terr-streets').textContent = t.streets || '—';
-
-  // Big map
-  if (t.mapUrl) {
-    document.getElementById('terr-map-img').src = t.mapUrl;
-    document.getElementById('terr-map-container').style.display = 'block';
-  } else {
-    document.getElementById('terr-map-container').style.display = 'none';
-  }
-
-  // Info grid
-  const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+  document.getElementById('detail-title').textContent = `Territorio ${t.number}`;
+  document.getElementById('detail-streets').textContent = t.streets || '—';
+  const mapImg = document.getElementById('detail-map-img');
+  if (t.mapUrl) { mapImg.src = t.mapUrl; mapImg.style.display = 'block'; }
+  else mapImg.style.display = 'none';
   const isExp = t.state === 'Vencido';
-  document.getElementById('terr-info-grid').innerHTML = `
-    <div style="background:var(--surface2);border-radius:8px;padding:0.7rem 0.9rem;">
-      <div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">Estado</div>
-      <div style="font-weight:600;font-size:0.9rem;margin-top:0.2rem;">
-        <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? Lang.t('statusExpired') : Lang.t('statusAssigned')}</span>
-        ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow" style="margin-left:0.3rem;">${du}d</span>` : ''}
-      </div>
-    </div>
-    <div style="background:var(--surface2);border-radius:8px;padding:0.7rem 0.9rem;">
-      <div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);" data-i18n="expiresDate">Expira</div>
-      <div style="font-weight:600;font-size:0.9rem;margin-top:0.2rem;${isExp ? 'color:var(--red)' : ''}">${Utils.fmtDate(t.currentAssign?.expiresDate)}</div>
-    </div>`;
-
-  // Start point
-  if (t.startPoint) {
-    document.getElementById('terr-start-text').textContent = t.startPoint;
-    document.getElementById('terr-start-point').style.display = 'block';
-  } else {
-    document.getElementById('terr-start-point').style.display = 'none';
-  }
-
-  // Nav button
-  const navBtn = document.getElementById('terr-nav-btn');
-  const navBtnHeader = document.getElementById('btn-nav-link');
+  const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+  document.getElementById('detail-info').innerHTML = `
+    <div class="info-box"><div class="info-box-label">Estado</div><div class="info-box-value"><span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? 'Vencido' : 'Asignado'}</span></div></div>
+    <div class="info-box"><div class="info-box-label">Expira</div><div class="info-box-value" style="${isExp ? 'color:var(--red)' : ''}">${Utils.fmtDate(t.currentAssign?.expiresDate)}</div></div>`;
+  if (t.startPoint) { document.getElementById('detail-start-text').textContent = t.startPoint; document.getElementById('detail-start').style.display = 'block'; }
+  else document.getElementById('detail-start').style.display = 'none';
   if (t.mapLink) {
-    navBtn.href = t.mapLink;
-    navBtn.style.display = 'block';
-    navBtnHeader.href = t.mapLink;
-    navBtnHeader.style.display = 'inline-flex';
-  } else {
-    navBtn.style.display = 'none';
-    navBtnHeader.style.display = 'none';
-  }
-
-  // Notes
-  if (t.notes) {
-    document.getElementById('terr-notes-display').textContent = t.notes;
-    document.getElementById('terr-notes-display').style.display = 'block';
-  } else {
-    document.getElementById('terr-notes-display').style.display = 'none';
-  }
-
-  // Load addresses and phone records
+    document.getElementById('detail-nav-btn').href = t.mapLink; document.getElementById('detail-nav-btn').style.display = 'inline-flex';
+    document.getElementById('detail-nav-full').href = t.mapLink; document.getElementById('detail-nav-full').style.display = 'block';
+  } else { document.getElementById('detail-nav-btn').style.display = 'none'; document.getElementById('detail-nav-full').style.display = 'none'; }
   [addresses, phoneRecords] = await Promise.all([DB.getAddresses(terrId), DB.getPhoneRecords(terrId)]);
-  renderDoorTable();
-  renderPhoneTable();
-
-  showSection('territories');
-  switchTab('door');
-};
-
-window.openNavLink = function() {};
-
-window.copyShareLink = function() {
-  if (!currentTerrId) return;
-  const url = `${window.location.origin}/view/?t=${currentTerrId}`;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(url).then(() => Utils.toast(Lang.t('linkCopied'), 'success'));
-  } else {
-    prompt(Lang.t('shareLink'), url);
-  }
-};
-
-// ── Door to door ──────────────────────────────────────────────────────────────
-function renderDoorTable() {
-  document.getElementById('door-count').textContent = `${addresses.length} ${Lang.t('addresses')}`;
-  if (!addresses.length) {
-    document.getElementById('door-table').innerHTML = `<tr><td colspan="5" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noAddresses')}</td></tr>`;
-    return;
-  }
-  document.getElementById('door-table').innerHTML = addresses.map(a => {
-    const hasVisit = !!a.visitDate;
-    return `<tr style="${hasVisit ? 'background:rgba(54,211,153,0.04)' : ''}">
-      <td><strong>${a.address}</strong></td>
-      <td style="color:var(--muted)">${a.street || '—'}</td>
-      <td>
-        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','observation','${escHtml(a.observation||'')}',this)">
-          ${a.observation ? `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.72rem;background:rgba(245,197,24,0.12);color:var(--yellow);font-family:var(--font-mono);">${a.observation}</span>` : '<span style="color:var(--muted)">—</span>'}
-        </span>
-      </td>
-      <td>
-        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','comment','${escHtml(a.comment||'')}',this)">
-          ${a.comment || '<span style="color:var(--muted)">—</span>'}
-        </span>
-      </td>
-      <td>
-        <div class="flex gap-1 items-center">
-          <span class="editable-cell" title="Click para editar fecha" onclick="inlineEditDoor('${a.id}','visitDate','${a.visitDate||''}',this)">
-            ${a.visitDate ? Utils.fmtDate(a.visitDate) : '<span style="color:var(--muted)">—</span>'}
-          </span>
-          ${hasVisit ? `<button onclick="clearDoorField('${a.id}','visitDate')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0.1rem 0.3rem;" title="Borrar fecha">✕</button>` : ''}
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+  renderDoorList(); renderPhoneList();
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-detail').style.display = 'block';
+  window.scrollTo(0, 0);
+  activateTab('door');
 }
 
-function escHtml(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function renderDoorList() {
+  document.getElementById('door-count').textContent = `${addresses.length} direcciones`;
+  if (!addresses.length) { document.getElementById('door-list').innerHTML = `<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;">Sin direcciones</div>`; return; }
+  document.getElementById('door-list').innerHTML = addresses.map(a => `
+    <div class="addr-row ${a.visitDate ? 'visited' : ''}">
+      <div class="addr-num">${a.address}</div>
+      <div class="addr-street">${a.street || ''}</div>
+      <div class="addr-obs">${a.observation ? `<span class="obs-tag">${a.observation}</span>` : ''}${a.comment ? `<span style="font-size:0.78rem;color:var(--muted);margin-left:0.3rem;">${a.comment}</span>` : ''}</div>
+      <div class="addr-date">${a.visitDate ? Utils.fmtDate(a.visitDate) : ''}</div>
+      <button class="edit-btn edit-addr-btn" data-id="${a.id}">✏️</button>
+    </div>`).join('');
+  document.querySelectorAll('.edit-addr-btn').forEach(btn => btn.addEventListener('click', () => openEditAddr(btn.dataset.id)));
+}
 
-window.inlineEditDoor = function(id, field, current, cell) {
-  if (field === 'observation') {
-    // Show preset dropdown for observation
-    const ps = settings.doorStatuses || [];
-    const sel = document.createElement('select');
-    sel.className = 'cell-input';
-    sel.innerHTML = `<option value="">— Seleccionar —</option>` +
-      ps.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('') +
-      `<option value="__custom">Otro...</option>`;
-    cell.innerHTML = '';
-    cell.appendChild(sel);
-    sel.focus();
-    sel.addEventListener('change', async () => {
-      let val = sel.value;
-      if (val === '__custom') {
-        val = prompt('Observación:', current) || '';
-        if (!val) { renderDoorTable(); return; }
-      }
-      const addr = addresses.find(a => a.id === id);
-      if (addr) addr[field] = val;
-      await DB.saveAddress(currentTerrId, { [field]: val }, id);
-      renderDoorTable();
-    });
-    sel.addEventListener('blur', () => setTimeout(renderDoorTable, 200));
-  } else {
-    const isDate = field === 'visitDate';
-    const input = document.createElement('input');
-    input.type = isDate ? 'date' : 'text';
-    input.value = current;
-    input.className = 'cell-input';
-    cell.innerHTML = '';
-    cell.appendChild(input);
-    input.focus();
-    const save = async () => {
-      const val = input.value;
-      const addr = addresses.find(a => a.id === id);
-      if (!addr) return;
-      addr[field] = val;
-      await DB.saveAddress(currentTerrId, { [field]: val }, id);
-      renderDoorTable();
-    };
-    input.addEventListener('blur', save);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderDoorTable(); });
-  }
-};
-
-window.openAddAddressModal = function(id = null) {
+function openEditAddr(id) {
   editingAddrId = id;
-  document.getElementById('addr-edit-id').value = id || '';
-  document.getElementById('addr-modal-title').textContent = id ? Lang.t('edit') : Lang.t('addAddress');
-
-  // Populate observation dropdown
-  const obs = settings.doorStatuses || [];
-  document.getElementById('addr-obs-select').innerHTML = `<option value="">— Seleccionar estado —</option>` + obs.map(s => `<option value="${s}">${s}</option>`).join('');
-  document.getElementById('phone-result-select');
-
-  if (id) {
-    const a = addresses.find(x => x.id === id);
-    document.getElementById('addr-address').value = a.address || '';
-    document.getElementById('addr-street').value = a.street || '';
-    document.getElementById('addr-observation').value = a.observation || '';
-    document.getElementById('addr-comment').value = a.comment || '';
-    document.getElementById('addr-visit-date').value = a.visitDate || '';
-  } else {
-    document.getElementById('addr-address').value = '';
-    document.getElementById('addr-street').value = '';
-    document.getElementById('addr-observation').value = '';
-    document.getElementById('addr-comment').value = '';
-    document.getElementById('addr-visit-date').value = '';
-  }
-  document.getElementById('modal-add-address').classList.add('open');
-};
-
-window.setObsFromSelect = function(sel) {
-  if (sel.value) document.getElementById('addr-observation').value = sel.value;
-};
-
-window.saveAddress = async function() {
-  const id = document.getElementById('addr-edit-id').value || null;
-  const data = {
-    address: document.getElementById('addr-address').value.trim(),
-    street: document.getElementById('addr-street').value.trim(),
-    observation: document.getElementById('addr-observation').value.trim(),
-    comment: document.getElementById('addr-comment').value.trim(),
-    visitDate: document.getElementById('addr-visit-date').value,
-    order: id ? addresses.find(a => a.id === id)?.order ?? addresses.length : addresses.length
-  };
-  try {
-    await DB.saveAddress(currentTerrId, data, id);
-    addresses = await DB.getAddresses(currentTerrId);
-    renderDoorTable();
-    closeModal('modal-add-address');
-    Utils.toast(Lang.t('savedSuccess'), 'success');
-  } catch (err) {
-    Utils.toast(Lang.t('errorSaving'), 'error');
-  }
-};
-
-window.deleteAddress = async function(id) {
-  if (!Utils.confirm(Lang.t('confirmDelete'))) return;
-  await DB.deleteAddress(currentTerrId, id);
-  addresses = await DB.getAddresses(currentTerrId);
-  renderDoorTable();
-};
-
-// ── Phone records ─────────────────────────────────────────────────────────────
-function renderPhoneTable() {
-  document.getElementById('phone-count').textContent = `${phoneRecords.length} registros`;
-  if (!phoneRecords.length) {
-    document.getElementById('phone-table').innerHTML = `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noPhoneRecords')}</td></tr>`;
-    return;
-  }
-  document.getElementById('phone-table').innerHTML = phoneRecords.map(r => `
-    <tr>
-      <td><strong>${r.address}</strong></td>
-      <td>${r.name || '—'}</td>
-      <td class="font-mono">${r.phone || '—'}</td>
-      <td>
-        <div class="flex gap-1 items-center">
-          <span class="editable-cell" title="Click para editar fecha" onclick="inlineEditPhoneDate('${r.id}',this)">
-            ${r.date ? Utils.fmtDate(r.date) : '<span class="text-muted">—</span>'}
-          </span>
-          ${r.date ? `<button class="btn btn-ghost btn-sm" style="padding:0.1rem 0.4rem;font-size:0.7rem;" onclick="clearPhoneField('${r.id}','date')" title="Borrar fecha">✕</button>` : ''}
-        </div>
-      </td>
-      <td>
-        <div class="flex gap-1 items-center">
-          <span class="editable-cell" title="Click para actualizar resultado" onclick="inlineEditPhone('${r.id}','callResult','${escHtml(r.callResult||'')}',this)">
-            ${r.callResult ? `<span class="badge badge-blue">${r.callResult}</span>` : '<span class="text-muted">— Toca para actualizar</span>'}
-          </span>
-          ${r.callResult ? `<button class="btn btn-ghost btn-sm" style="padding:0.1rem 0.4rem;font-size:0.7rem;" onclick="clearPhoneField('${r.id}','callResult')" title="Borrar resultado">✕</button>` : ''}
-        </div>
-      </td>
-      <td>
-        <button class="btn btn-secondary btn-sm" onclick="openAddPhoneModal('${r.id}')">✏️</button>
-      </td>
-    </tr>`).join('');
+  const a = addresses.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('edit-addr-label').textContent = `${a.address} ${a.street || ''}`;
+  document.getElementById('edit-obs').value = a.observation || '';
+  document.getElementById('edit-comment').value = a.comment || '';
+  document.getElementById('edit-visit').value = a.visitDate || '';
+  const ds = (settings.doorStatuses?.length) ? settings.doorStatuses : ['Perro afuera','Duerme de día','Negocio','No tocar','Revisitar','Mudado'];
+  document.getElementById('obs-btns').innerHTML = ds.map(s => `<button type="button" class="preset-btn obs-preset-btn${s === a.observation ? ' active' : ''}" data-val="${s}">${s}</button>`).join('');
+  document.querySelectorAll('.obs-preset-btn').forEach(btn => btn.addEventListener('click', () => {
+    document.getElementById('edit-obs').value = btn.dataset.val;
+    document.querySelectorAll('.obs-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }));
+  document.getElementById('modal-addr').classList.add('open');
 }
 
-window.inlineEditPhone = function(id, field, current, cell) {
-  const ps = settings.phoneStatuses || [];
-  const sel = document.createElement('select');
-  sel.className = 'cell-input';
-  sel.innerHTML = `<option value="">—</option>` + ps.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('') + `<option value="__custom">Otro...</option>`;
-  cell.innerHTML = '';
-  cell.appendChild(sel);
-  sel.focus();
-
-  sel.addEventListener('change', async () => {
-    if (sel.value === '__custom') {
-      const val = prompt('Resultado:', current);
-      if (val === null) { renderPhoneTable(); return; }
-      const rec = phoneRecords.find(r => r.id === id);
-      if (rec) rec[field] = val;
-      await DB.savePhoneRecord(currentTerrId, { [field]: val }, id);
-    } else {
-      const rec = phoneRecords.find(r => r.id === id);
-      if (rec) rec[field] = sel.value;
-      await DB.savePhoneRecord(currentTerrId, { [field]: sel.value }, id);
-    }
-    renderPhoneTable();
-  });
-  sel.addEventListener('blur', () => setTimeout(renderPhoneTable, 200));
-};
-
-window.inlineEditPhoneDate = function(id, cell) {
-  const rec = phoneRecords.find(r => r.id === id);
-  const input = document.createElement('input');
-  input.type = 'date';
-  input.value = rec?.date || '';
-  input.className = 'cell-input';
-  cell.innerHTML = '';
-  cell.appendChild(input);
-  input.focus();
-  const save = async () => {
-    if (rec) rec.date = input.value;
-    await DB.savePhoneRecord(currentTerrId, { date: input.value }, id);
-    renderPhoneTable();
-  };
-  input.addEventListener('blur', save);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderPhoneTable(); });
-};
-
-window.clearPhoneField = async function(id, field) {
-  const rec = phoneRecords.find(r => r.id === id);
-  if (!rec) return;
-  rec[field] = '';
-  await DB.savePhoneRecord(currentTerrId, { [field]: '' }, id);
-  renderPhoneTable();
-};
-
-window.clearDoorField = async function(id, field) {
-  const addr = addresses.find(a => a.id === id);
-  if (!addr) return;
-  addr[field] = '';
-  await DB.saveAddress(currentTerrId, { [field]: '' }, id);
-  renderDoorTable();
-};
-
-window.openAddPhoneModal = function(id = null) {
-  editingPhoneId = id;
-  document.getElementById('phone-edit-id').value = id || '';
-  document.getElementById('phone-modal-title').textContent = id ? Lang.t('edit') : Lang.t('addRecord');
-
-  const ps = settings.phoneStatuses || [];
-  document.getElementById('phone-result-select').innerHTML = `<option value="">— Seleccionar resultado —</option>` + ps.map(s => `<option value="${s}">${s}</option>`).join('');
-
-  if (id) {
-    const r = phoneRecords.find(x => x.id === id);
-    document.getElementById('phone-address').value = r.address || '';
-    document.getElementById('phone-name').value = r.name || '';
-    document.getElementById('phone-number').value = r.phone || '';
-    document.getElementById('phone-date').value = r.date || '';
-    document.getElementById('phone-result').value = r.callResult || '';
-  } else {
-    ['phone-address','phone-name','phone-number','phone-result'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('phone-date').value = Utils.today();
-  }
-  document.getElementById('modal-add-phone').classList.add('open');
-};
-
-window.setPhoneResultFromSelect = function(sel) {
-  if (sel.value) document.getElementById('phone-result').value = sel.value;
-};
-
-window.savePhoneRecord = async function() {
-  const id = document.getElementById('phone-edit-id').value || null;
-  const data = {
-    address: document.getElementById('phone-address').value.trim(),
-    name: document.getElementById('phone-name').value.trim(),
-    phone: document.getElementById('phone-number').value.trim(),
-    date: document.getElementById('phone-date').value,
-    callResult: document.getElementById('phone-result').value.trim(),
-    order: id ? phoneRecords.find(r => r.id === id)?.order ?? phoneRecords.length : phoneRecords.length
-  };
-  try {
-    await DB.savePhoneRecord(currentTerrId, data, id);
-    phoneRecords = await DB.getPhoneRecords(currentTerrId);
-    renderPhoneTable();
-    closeModal('modal-add-phone');
-    Utils.toast(Lang.t('savedSuccess'), 'success');
-  } catch (err) {
-    Utils.toast(Lang.t('errorSaving'), 'error');
-  }
-};
-
-window.deletePhoneRecord = async function(id) {
-  if (!Utils.confirm(Lang.t('confirmDelete'))) return;
-  await DB.deletePhoneRecord(currentTerrId, id);
-  phoneRecords = await DB.getPhoneRecords(currentTerrId);
-  renderPhoneTable();
-};
-
-// ── Tabs & Nav ────────────────────────────────────────────────────────────────
-window.switchTab = function(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  document.getElementById('tab-btn-' + name).classList.add('active');
-};
-
-window.showSection = function(name) {
-  document.querySelectorAll('section[id^="sec-"]').forEach(s => s.style.display = 'none');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('sec-' + name).style.display = 'block';
-  document.querySelectorAll('.nav-item').forEach(n => {
-    if (n.getAttribute('onclick')?.includes(name)) n.classList.add('active');
-  });
-  if (window.innerWidth < 768) toggleSidebar();
-};
-
-window.toggleSidebar = function() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebar-overlay').classList.toggle('open');
-};
-
-window.closeModal = function(id) { document.getElementById(id)?.classList.remove('open'); };
-
-document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+document.getElementById('save-addr').addEventListener('click', async () => {
+  const a = addresses.find(x => x.id === editingAddrId); if (!a) return;
+  const data = { observation: document.getElementById('edit-obs').value.trim(), comment: document.getElementById('edit-comment').value.trim(), visitDate: document.getElementById('edit-visit').value };
+  Object.assign(a, data);
+  await DB.saveAddress(currentTerrId, data, editingAddrId);
+  closeModals(); renderDoorList(); Utils.toast('Guardado', 'success');
 });
+
+document.getElementById('clear-visit').addEventListener('click', () => { document.getElementById('edit-visit').value = ''; });
+
+function renderPhoneList() {
+  document.getElementById('phone-count').textContent = `${phoneRecords.length} registros`;
+  if (!phoneRecords.length) { document.getElementById('phone-list').innerHTML = `<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;">Sin registros — usa el botón + Agregar</div>`; return; }
+  document.getElementById('phone-list').innerHTML = phoneRecords.map(r => `
+    <div class="phone-row">
+      <div style="font-weight:700;font-size:0.85rem;min-width:60px;">${r.address}</div>
+      <div style="font-size:0.82rem;color:var(--muted);min-width:100px;">${r.name || '—'}</div>
+      <div style="font-family:var(--font-mono);font-size:0.82rem;min-width:110px;">${r.phone || '—'}</div>
+      <div style="flex:1;">${r.callResult ? `<span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.72rem;font-family:var(--font-mono);background:rgba(79,142,247,0.12);color:var(--accent);">${r.callResult}</span>` : ''}${r.date ? `<span style="font-size:0.75rem;color:var(--muted);margin-left:0.3rem;">${Utils.fmtDate(r.date)}</span>` : ''}</div>
+      <button class="edit-btn edit-phone-btn" data-id="${r.id}">✏️</button>
+    </div>`).join('');
+  document.querySelectorAll('.edit-phone-btn').forEach(btn => btn.addEventListener('click', () => openEditPhone(btn.dataset.id)));
+}
+
+function openEditPhone(id) {
+  editingPhoneId = id || null;
+  const r = id ? phoneRecords.find(x => x.id === id) : null;
+  document.getElementById('phone-modal-title').textContent = id ? 'Editar Registro' : 'Agregar Registro';
+  document.getElementById('edit-ph-addr').value = r?.address || '';
+  document.getElementById('edit-ph-name').value = r?.name || '';
+  document.getElementById('edit-ph-num').value = r?.phone || '';
+  document.getElementById('edit-ph-date').value = r?.date || Utils.today();
+  document.getElementById('edit-ph-result').value = r?.callResult || '';
+  const ps = (settings.phoneStatuses?.length) ? settings.phoneStatuses : ['No en casa','Línea desconectada','Persona ocupada','Plática','No interesado','Volvió a llamar','Número equivocado'];
+  document.getElementById('phone-result-btns').innerHTML = ps.map(s => `<button type="button" class="preset-btn ph-preset-btn${s === r?.callResult ? ' active' : ''}" data-val="${s}">${s}</button>`).join('');
+  document.querySelectorAll('.ph-preset-btn').forEach(btn => btn.addEventListener('click', () => {
+    document.getElementById('edit-ph-result').value = btn.dataset.val;
+    document.querySelectorAll('.ph-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }));
+  document.getElementById('modal-phone').classList.add('open');
+}
+
+document.getElementById('save-phone').addEventListener('click', async () => {
+  const data = { address: document.getElementById('edit-ph-addr').value.trim(), name: document.getElementById('edit-ph-name').value.trim(), phone: document.getElementById('edit-ph-num').value.trim(), date: document.getElementById('edit-ph-date').value, callResult: document.getElementById('edit-ph-result').value.trim(), order: editingPhoneId ? phoneRecords.find(r => r.id === editingPhoneId)?.order ?? phoneRecords.length : phoneRecords.length };
+  if (!data.address) { Utils.toast('Dirección requerida', 'error'); return; }
+  await DB.savePhoneRecord(currentTerrId, data, editingPhoneId);
+  phoneRecords = await DB.getPhoneRecords(currentTerrId);
+  closeModals(); renderPhoneList(); Utils.toast('Guardado', 'success');
+});
+
+document.getElementById('clear-ph-result').addEventListener('click', () => { document.getElementById('edit-ph-result').value = ''; document.querySelectorAll('.ph-preset-btn').forEach(b => b.classList.remove('active')); });
+
+function activateTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+}
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
+
+function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); }
+['cls-addr','cls-addr-2','cls-phone','cls-phone-2'].forEach(id => document.getElementById(id).addEventListener('click', closeModals));
+document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', e => { if (e.target === el) closeModals(); }));
+
+document.getElementById('btn-add-phone').addEventListener('click', () => openEditPhone(null));
+document.getElementById('btn-back').addEventListener('click', () => { document.getElementById('view-detail').style.display = 'none'; document.getElementById('view-dashboard').style.display = 'block'; window.scrollTo(0, 0); });
+document.getElementById('btn-share').addEventListener('click', () => { if (!currentTerrId) return; const url = `${window.location.origin}/view/?t=${currentTerrId}`; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => Utils.toast('Enlace copiado', 'success')); else prompt('Enlace:', url); });
 
 window.Auth = Auth;
 </script>
