@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- v2.1 - observation dropdown + phone add button fix -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -64,40 +65,61 @@
 
       <!-- TERRITORY DETAIL -->
       <section id="sec-territories" style="display:none">
-        <div class="page-header">
+        <div class="page-header" style="position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--border);">
           <button class="btn btn-ghost btn-sm" onclick="showSection('dashboard')">← <span data-i18n="back">Regresar</span></button>
           <div class="flex gap-1">
-            <button class="btn btn-secondary btn-sm" id="btn-nav-link" style="display:none">🧭 Navegar</button>
-            <button class="btn btn-secondary btn-sm" onclick="copyShareLink()">🔗 <span data-i18n="shareLink">Enlace Publicadores</span></button>
+            <a id="btn-nav-link" href="#" target="_blank" class="btn btn-secondary btn-sm" style="display:none">🧭 Navegar</a>
+            <button class="btn btn-secondary btn-sm" onclick="copyShareLink()">🔗 <span data-i18n="shareLink">Publicadores</span></button>
           </div>
         </div>
-        <div class="page-body">
-          <!-- Territory header -->
-          <div class="terr-header mb-3">
-            <div class="terr-map-thumb" id="terr-map-container">
-              <div class="no-map">🗺️</div>
+
+        <div style="max-width:900px;margin:0 auto;padding:1.5rem 1rem;">
+
+          <!-- Territory card — matches publisher layout -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1.5rem;">
+            <div style="padding:1.4rem 1.4rem 0 1.4rem;">
+              <h1 id="terr-title" style="font-family:var(--font-head);font-weight:800;font-size:1.8rem;">Territorio —</h1>
+              <p id="terr-streets" class="text-muted text-sm" style="margin-top:0.3rem;">—</p>
             </div>
-            <div class="terr-info">
-              <h2 id="terr-title">Territorio —</h2>
-              <div class="streets text-muted" id="terr-streets">—</div>
-              <div class="meta" id="terr-meta"></div>
-              <div id="terr-notes-display" class="text-sm text-muted mt-1" style="display:none"></div>
+
+            <!-- Big map — full width, no padding -->
+            <div id="terr-map-container" style="display:none;width:100%;margin-top:1rem;">
+              <img id="terr-map-img" style="width:100%;display:block;max-height:320px;object-fit:cover;">
+            </div>
+
+            <div style="padding:1rem 1.4rem 1.4rem 1.4rem;">
+              <!-- Info grid -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1rem;margin-top:1rem;" id="terr-info-grid"></div>
+
+              <!-- Start point -->
+              <div id="terr-start-point" style="display:none;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:1rem;font-size:0.85rem;">
+                ⭐ <strong style="color:var(--accent)">Punto de inicio:</strong> <span id="terr-start-text"></span>
+              </div>
+
+              <!-- Nav button -->
+              <a id="terr-nav-btn" href="#" target="_blank" style="display:none;width:100%;padding:0.9rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font-head);font-weight:700;font-size:1rem;text-align:center;cursor:pointer;margin-bottom:1rem;text-decoration:none;">
+                🧭 Abrir en Google Maps
+              </a>
+
+              <!-- Notes -->
+              <div id="terr-notes-display" class="text-sm text-muted" style="display:none;"></div>
             </div>
           </div>
 
           <!-- Tabs -->
           <div class="tabs">
-            <div class="tab active" onclick="switchTab('door')">🚪 <span data-i18n="addresses">Casa en Casa</span></div>
-            <div class="tab" onclick="switchTab('phone')">📞 <span data-i18n="phoneTerritory">Telefónico</span></div>
+            <div class="tab active" id="tab-btn-door" onclick="switchTab('door')">🚪 <span data-i18n="addresses">Casa en Casa</span></div>
+            <div class="tab" id="tab-btn-phone" onclick="switchTab('phone')">📞 <span data-i18n="phoneTerritory">Telefónico</span></div>
           </div>
 
           <!-- Door to door tab -->
           <div class="tab-content active" id="tab-door">
-            <div class="table-wrap">
-              <div class="table-toolbar">
-                <span class="text-sm text-muted" id="door-count"></span>
+            <div class="address-table">
+              <div style="padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-family:var(--font-head);font-weight:700;">Registro de Casa en Casa</span>
+                <span class="text-muted text-sm" id="door-count"></span>
               </div>
-              <div class="table-responsive">
+              <div style="overflow-x:auto;">
                 <table>
                   <thead><tr>
                     <th data-i18n="address">Dirección</th>
@@ -114,11 +136,15 @@
 
           <!-- Phone tab -->
           <div class="tab-content" id="tab-phone">
-            <div class="table-wrap">
-              <div class="table-toolbar">
-                <span class="text-sm text-muted" id="phone-count"></span>
+            <div class="address-table">
+              <div style="padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-family:var(--font-head);font-weight:700;" data-i18n="phoneTerritory">Territorio Telefónico</span>
+                <div class="flex gap-1 items-center">
+                  <span class="text-muted text-sm" id="phone-count"></span>
+                  <button class="btn btn-primary btn-sm" onclick="openAddPhoneModal()">+ Agregar</button>
+                </div>
               </div>
-              <div class="table-responsive">
+              <div style="overflow-x:auto;">
                 <table>
                   <thead><tr>
                     <th data-i18n="address">Dirección</th>
@@ -126,12 +152,14 @@
                     <th data-i18n="phone">Teléfono</th>
                     <th data-i18n="date">Fecha</th>
                     <th data-i18n="callResult">Resultado</th>
+                    <th></th>
                   </tr></thead>
                   <tbody id="phone-table"></tbody>
                 </table>
               </div>
             </div>
           </div>
+
         </div>
       </section>
 
@@ -298,28 +326,61 @@ window.openTerritory = async function(terrId) {
   const t = myTerritories.find(x => x.id === terrId);
   if (!t) return;
 
-  // Map
-  const mc = document.getElementById('terr-map-container');
-  mc.innerHTML = t.mapUrl ? `<img src="${t.mapUrl}" alt="Mapa ${t.number}" style="width:100%;height:100%;object-fit:cover">` : `<div class="no-map">🗺️</div>`;
-
+  // Title and streets
   document.getElementById('terr-title').textContent = `Territorio ${t.number}`;
   document.getElementById('terr-streets').textContent = t.streets || '—';
 
+  // Big map
+  if (t.mapUrl) {
+    document.getElementById('terr-map-img').src = t.mapUrl;
+    document.getElementById('terr-map-container').style.display = 'block';
+  } else {
+    document.getElementById('terr-map-container').style.display = 'none';
+  }
+
+  // Info grid
   const du = Utils.daysUntil(t.currentAssign?.expiresDate);
   const isExp = t.state === 'Vencido';
-  document.getElementById('terr-meta').innerHTML = `
-    <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? Lang.t('statusExpired') : Lang.t('statusAssigned')}</span>
-    <span class="badge badge-gray">${Lang.t('expiresDate')}: ${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
-    ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du} días</span>` : ''}`;
+  document.getElementById('terr-info-grid').innerHTML = `
+    <div style="background:var(--surface2);border-radius:8px;padding:0.7rem 0.9rem;">
+      <div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);">Estado</div>
+      <div style="font-weight:600;font-size:0.9rem;margin-top:0.2rem;">
+        <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? Lang.t('statusExpired') : Lang.t('statusAssigned')}</span>
+        ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow" style="margin-left:0.3rem;">${du}d</span>` : ''}
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:0.7rem 0.9rem;">
+      <div style="font-family:var(--font-mono);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);" data-i18n="expiresDate">Expira</div>
+      <div style="font-weight:600;font-size:0.9rem;margin-top:0.2rem;${isExp ? 'color:var(--red)' : ''}">${Utils.fmtDate(t.currentAssign?.expiresDate)}</div>
+    </div>`;
 
+  // Start point
+  if (t.startPoint) {
+    document.getElementById('terr-start-text').textContent = t.startPoint;
+    document.getElementById('terr-start-point').style.display = 'block';
+  } else {
+    document.getElementById('terr-start-point').style.display = 'none';
+  }
+
+  // Nav button
+  const navBtn = document.getElementById('terr-nav-btn');
+  const navBtnHeader = document.getElementById('btn-nav-link');
+  if (t.mapLink) {
+    navBtn.href = t.mapLink;
+    navBtn.style.display = 'block';
+    navBtnHeader.href = t.mapLink;
+    navBtnHeader.style.display = 'inline-flex';
+  } else {
+    navBtn.style.display = 'none';
+    navBtnHeader.style.display = 'none';
+  }
+
+  // Notes
   if (t.notes) {
     document.getElementById('terr-notes-display').textContent = t.notes;
     document.getElementById('terr-notes-display').style.display = 'block';
-  }
-
-  if (t.mapLink) {
-    document.getElementById('btn-nav-link').style.display = 'inline-flex';
-    document.getElementById('btn-nav-link').onclick = () => window.open(t.mapLink, '_blank');
+  } else {
+    document.getElementById('terr-notes-display').style.display = 'none';
   }
 
   // Load addresses and phone records
@@ -328,7 +389,6 @@ window.openTerritory = async function(terrId) {
   renderPhoneTable();
 
   showSection('territories');
-  // Activate door tab
   switchTab('door');
 };
 
@@ -353,17 +413,26 @@ function renderDoorTable() {
   }
   document.getElementById('door-table').innerHTML = addresses.map(a => {
     const hasVisit = !!a.visitDate;
-    return `<tr class="${hasVisit ? 'row-visited' : ''}">
+    return `<tr style="${hasVisit ? 'background:rgba(54,211,153,0.04)' : ''}">
       <td><strong>${a.address}</strong></td>
-      <td class="text-muted">${a.street || '—'}</td>
+      <td style="color:var(--muted)">${a.street || '—'}</td>
       <td>
-        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','observation','${escHtml(a.observation||'')}',this)">${a.observation || '<span class="text-muted">—</span>'}</span>
+        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','observation','${escHtml(a.observation||'')}',this)">
+          ${a.observation ? `<span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.72rem;background:rgba(245,197,24,0.12);color:var(--yellow);font-family:var(--font-mono);">${a.observation}</span>` : '<span style="color:var(--muted)">—</span>'}
+        </span>
       </td>
       <td>
-        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','comment','${escHtml(a.comment||'')}',this)">${a.comment || '<span class="text-muted">—</span>'}</span>
+        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','comment','${escHtml(a.comment||'')}',this)">
+          ${a.comment || '<span style="color:var(--muted)">—</span>'}
+        </span>
       </td>
       <td>
-        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','visitDate','${a.visitDate||''}',this)">${a.visitDate ? Utils.fmtDate(a.visitDate) : '<span class="text-muted">—</span>'}</span>
+        <div class="flex gap-1 items-center">
+          <span class="editable-cell" title="Click para editar fecha" onclick="inlineEditDoor('${a.id}','visitDate','${a.visitDate||''}',this)">
+            ${a.visitDate ? Utils.fmtDate(a.visitDate) : '<span style="color:var(--muted)">—</span>'}
+          </span>
+          ${hasVisit ? `<button onclick="clearDoorField('${a.id}','visitDate')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0.1rem 0.3rem;" title="Borrar fecha">✕</button>` : ''}
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -372,26 +441,49 @@ function renderDoorTable() {
 function escHtml(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
 
 window.inlineEditDoor = function(id, field, current, cell) {
-  const isDate = field === 'visitDate';
-  const input = document.createElement(isDate ? 'input' : 'input');
-  input.type = isDate ? 'date' : 'text';
-  input.value = current;
-  input.className = 'cell-input';
-  cell.innerHTML = '';
-  cell.appendChild(input);
-  input.focus();
-
-  const save = async () => {
-    const val = input.value;
-    const addr = addresses.find(a => a.id === id);
-    if (!addr) return;
-    addr[field] = val;
-    await DB.saveAddress(currentTerrId, { [field]: val }, id);
-    renderDoorTable();
-  };
-
-  input.addEventListener('blur', save);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderDoorTable(); });
+  if (field === 'observation') {
+    // Show preset dropdown for observation
+    const ps = settings.doorStatuses || [];
+    const sel = document.createElement('select');
+    sel.className = 'cell-input';
+    sel.innerHTML = `<option value="">— Seleccionar —</option>` +
+      ps.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('') +
+      `<option value="__custom">Otro...</option>`;
+    cell.innerHTML = '';
+    cell.appendChild(sel);
+    sel.focus();
+    sel.addEventListener('change', async () => {
+      let val = sel.value;
+      if (val === '__custom') {
+        val = prompt('Observación:', current) || '';
+        if (!val) { renderDoorTable(); return; }
+      }
+      const addr = addresses.find(a => a.id === id);
+      if (addr) addr[field] = val;
+      await DB.saveAddress(currentTerrId, { [field]: val }, id);
+      renderDoorTable();
+    });
+    sel.addEventListener('blur', () => setTimeout(renderDoorTable, 200));
+  } else {
+    const isDate = field === 'visitDate';
+    const input = document.createElement('input');
+    input.type = isDate ? 'date' : 'text';
+    input.value = current;
+    input.className = 'cell-input';
+    cell.innerHTML = '';
+    cell.appendChild(input);
+    input.focus();
+    const save = async () => {
+      const val = input.value;
+      const addr = addresses.find(a => a.id === id);
+      if (!addr) return;
+      addr[field] = val;
+      await DB.saveAddress(currentTerrId, { [field]: val }, id);
+      renderDoorTable();
+    };
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderDoorTable(); });
+  }
 };
 
 window.openAddAddressModal = function(id = null) {
@@ -455,9 +547,9 @@ window.deleteAddress = async function(id) {
 
 // ── Phone records ─────────────────────────────────────────────────────────────
 function renderPhoneTable() {
-  document.getElementById('phone-count').textContent = `${phoneRecords.length} ${Lang.t('totalRecords')}`;
+  document.getElementById('phone-count').textContent = `${phoneRecords.length} registros`;
   if (!phoneRecords.length) {
-    document.getElementById('phone-table').innerHTML = `<tr><td colspan="5" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noPhoneRecords')}</td></tr>`;
+    document.getElementById('phone-table').innerHTML = `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noPhoneRecords')}</td></tr>`;
     return;
   }
   document.getElementById('phone-table').innerHTML = phoneRecords.map(r => `
@@ -465,11 +557,24 @@ function renderPhoneTable() {
       <td><strong>${r.address}</strong></td>
       <td>${r.name || '—'}</td>
       <td class="font-mono">${r.phone || '—'}</td>
-      <td>${r.date ? Utils.fmtDate(r.date) : '—'}</td>
       <td>
-        <span class="editable-cell" title="Click para actualizar resultado" onclick="inlineEditPhone('${r.id}','callResult','${escHtml(r.callResult||'')}',this)">
-          ${r.callResult ? `<span class="badge badge-blue">${r.callResult}</span>` : '<span class="text-muted">— Click para actualizar</span>'}
-        </span>
+        <div class="flex gap-1 items-center">
+          <span class="editable-cell" title="Click para editar fecha" onclick="inlineEditPhoneDate('${r.id}',this)">
+            ${r.date ? Utils.fmtDate(r.date) : '<span class="text-muted">—</span>'}
+          </span>
+          ${r.date ? `<button class="btn btn-ghost btn-sm" style="padding:0.1rem 0.4rem;font-size:0.7rem;" onclick="clearPhoneField('${r.id}','date')" title="Borrar fecha">✕</button>` : ''}
+        </div>
+      </td>
+      <td>
+        <div class="flex gap-1 items-center">
+          <span class="editable-cell" title="Click para actualizar resultado" onclick="inlineEditPhone('${r.id}','callResult','${escHtml(r.callResult||'')}',this)">
+            ${r.callResult ? `<span class="badge badge-blue">${r.callResult}</span>` : '<span class="text-muted">— Toca para actualizar</span>'}
+          </span>
+          ${r.callResult ? `<button class="btn btn-ghost btn-sm" style="padding:0.1rem 0.4rem;font-size:0.7rem;" onclick="clearPhoneField('${r.id}','callResult')" title="Borrar resultado">✕</button>` : ''}
+        </div>
+      </td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="openAddPhoneModal('${r.id}')">✏️</button>
       </td>
     </tr>`).join('');
 }
@@ -498,6 +603,40 @@ window.inlineEditPhone = function(id, field, current, cell) {
     renderPhoneTable();
   });
   sel.addEventListener('blur', () => setTimeout(renderPhoneTable, 200));
+};
+
+window.inlineEditPhoneDate = function(id, cell) {
+  const rec = phoneRecords.find(r => r.id === id);
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.value = rec?.date || '';
+  input.className = 'cell-input';
+  cell.innerHTML = '';
+  cell.appendChild(input);
+  input.focus();
+  const save = async () => {
+    if (rec) rec.date = input.value;
+    await DB.savePhoneRecord(currentTerrId, { date: input.value }, id);
+    renderPhoneTable();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderPhoneTable(); });
+};
+
+window.clearPhoneField = async function(id, field) {
+  const rec = phoneRecords.find(r => r.id === id);
+  if (!rec) return;
+  rec[field] = '';
+  await DB.savePhoneRecord(currentTerrId, { [field]: '' }, id);
+  renderPhoneTable();
+};
+
+window.clearDoorField = async function(id, field) {
+  const addr = addresses.find(a => a.id === id);
+  if (!addr) return;
+  addr[field] = '';
+  await DB.saveAddress(currentTerrId, { [field]: '' }, id);
+  renderDoorTable();
 };
 
 window.openAddPhoneModal = function(id = null) {
@@ -559,11 +698,7 @@ window.switchTab = function(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
-  event?.target?.classList.add('active');
-  // Fix: use index
-  const tabs = document.querySelectorAll('.tab');
-  const idx = name === 'door' ? 0 : 1;
-  tabs[idx]?.classList.add('active');
+  document.getElementById('tab-btn-' + name).classList.add('active');
 };
 
 window.showSection = function(name) {
