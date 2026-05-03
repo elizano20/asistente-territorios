@@ -9,7 +9,7 @@ const firebaseConfig = {
 };
 
 // Firebase imports via CDN modules
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -40,14 +40,20 @@ const Auth = {
   },
 
   async createCoordinator(email, password, name, maxTerr) {
-    // Create auth user
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    // Save profile
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      name, email, role: 'coordinator', maxTerr: maxTerr || 8,
-      active: true, createdAt: serverTimestamp()
-    });
-    return cred.user;
+    // Use a secondary Firebase app to create user without affecting current session
+    const secondaryApp = initializeApp(firebaseConfig, 'secondary');
+    const secondaryAuth = getAuth(secondaryApp);
+    try {
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        name, email, role: 'coordinator', maxTerr: maxTerr || 8,
+        active: true, createdAt: serverTimestamp()
+      });
+      await signOut(secondaryAuth);
+      return cred.user;
+    } finally {
+      await deleteApp(secondaryApp);
+    }
   },
 
   onReady(callback) {
