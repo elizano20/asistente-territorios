@@ -30,7 +30,6 @@
       </div>
       <nav class="sidebar-nav">
         <a class="nav-item active" href="#" onclick="showSection('dashboard')"><span class="icon">📊</span><span data-i18n="navHome">Inicio</span></a>
-        <a class="nav-item" href="#" onclick="showSection('territories')"><span class="icon">🗺️</span><span data-i18n="myTerritories">Mis Territorios</span></a>
       </nav>
       <div class="sidebar-bottom">
         <div class="sidebar-user">
@@ -68,7 +67,7 @@
         <div class="page-header">
           <button class="btn btn-ghost btn-sm" onclick="showSection('dashboard')">← <span data-i18n="back">Regresar</span></button>
           <div class="flex gap-1">
-            <button class="btn btn-secondary btn-sm" id="btn-nav-link" onclick="openNavLink()" style="display:none">🧭 Navegar</button>
+            <button class="btn btn-secondary btn-sm" id="btn-nav-link" style="display:none">🧭 Navegar</button>
             <button class="btn btn-secondary btn-sm" onclick="copyShareLink()">🔗 <span data-i18n="shareLink">Enlace Publicadores</span></button>
           </div>
         </div>
@@ -97,7 +96,6 @@
             <div class="table-wrap">
               <div class="table-toolbar">
                 <span class="text-sm text-muted" id="door-count"></span>
-                <button class="btn btn-primary btn-sm" onclick="openAddAddressModal()">+ <span data-i18n="addAddress">Agregar</span></button>
               </div>
               <div class="table-responsive">
                 <table>
@@ -107,7 +105,6 @@
                     <th data-i18n="observation">Observación</th>
                     <th data-i18n="comment">Comentario</th>
                     <th data-i18n="visitDate">Fecha Visita</th>
-                    <th></th>
                   </tr></thead>
                   <tbody id="door-table"></tbody>
                 </table>
@@ -120,7 +117,6 @@
             <div class="table-wrap">
               <div class="table-toolbar">
                 <span class="text-sm text-muted" id="phone-count"></span>
-                <button class="btn btn-primary btn-sm" onclick="openAddPhoneModal()">+ <span data-i18n="addRecord">Agregar</span></button>
               </div>
               <div class="table-responsive">
                 <table>
@@ -130,7 +126,6 @@
                     <th data-i18n="phone">Teléfono</th>
                     <th data-i18n="date">Fecha</th>
                     <th data-i18n="callResult">Resultado</th>
-                    <th></th>
                   </tr></thead>
                   <tbody id="phone-table"></tbody>
                 </table>
@@ -353,7 +348,7 @@ window.copyShareLink = function() {
 function renderDoorTable() {
   document.getElementById('door-count').textContent = `${addresses.length} ${Lang.t('addresses')}`;
   if (!addresses.length) {
-    document.getElementById('door-table').innerHTML = `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noAddresses')}</td></tr>`;
+    document.getElementById('door-table').innerHTML = `<tr><td colspan="5" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noAddresses')}</td></tr>`;
     return;
   }
   document.getElementById('door-table').innerHTML = addresses.map(a => {
@@ -362,19 +357,13 @@ function renderDoorTable() {
       <td><strong>${a.address}</strong></td>
       <td class="text-muted">${a.street || '—'}</td>
       <td>
-        <span class="editable-cell" onclick="inlineEditDoor('${a.id}','observation','${escHtml(a.observation||'')}',this)">${a.observation || '<span class="text-muted">—</span>'}</span>
+        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','observation','${escHtml(a.observation||'')}',this)">${a.observation || '<span class="text-muted">—</span>'}</span>
       </td>
       <td>
-        <span class="editable-cell" onclick="inlineEditDoor('${a.id}','comment','${escHtml(a.comment||'')}',this)">${a.comment || '<span class="text-muted">—</span>'}</span>
+        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','comment','${escHtml(a.comment||'')}',this)">${a.comment || '<span class="text-muted">—</span>'}</span>
       </td>
       <td>
-        <span class="editable-cell" onclick="inlineEditDoor('${a.id}','visitDate','${a.visitDate||''}',this)">${a.visitDate ? Utils.fmtDate(a.visitDate) : '<span class="text-muted">—</span>'}</span>
-      </td>
-      <td>
-        <div class="flex gap-1">
-          <button class="btn btn-secondary btn-sm" onclick="openAddAddressModal('${a.id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteAddress('${a.id}')">🗑</button>
-        </div>
+        <span class="editable-cell" title="Click para editar" onclick="inlineEditDoor('${a.id}','visitDate','${a.visitDate||''}',this)">${a.visitDate ? Utils.fmtDate(a.visitDate) : '<span class="text-muted">—</span>'}</span>
       </td>
     </tr>`;
   }).join('');
@@ -468,7 +457,7 @@ window.deleteAddress = async function(id) {
 function renderPhoneTable() {
   document.getElementById('phone-count').textContent = `${phoneRecords.length} ${Lang.t('totalRecords')}`;
   if (!phoneRecords.length) {
-    document.getElementById('phone-table').innerHTML = `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noPhoneRecords')}</td></tr>`;
+    document.getElementById('phone-table').innerHTML = `<tr><td colspan="5" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noPhoneRecords')}</td></tr>`;
     return;
   }
   document.getElementById('phone-table').innerHTML = phoneRecords.map(r => `
@@ -478,15 +467,9 @@ function renderPhoneTable() {
       <td class="font-mono">${r.phone || '—'}</td>
       <td>${r.date ? Utils.fmtDate(r.date) : '—'}</td>
       <td>
-        <span class="editable-cell" onclick="inlineEditPhone('${r.id}','callResult','${escHtml(r.callResult||'')}',this)">
-          ${r.callResult ? `<span class="badge badge-blue">${r.callResult}</span>` : '<span class="text-muted">—</span>'}
+        <span class="editable-cell" title="Click para actualizar resultado" onclick="inlineEditPhone('${r.id}','callResult','${escHtml(r.callResult||'')}',this)">
+          ${r.callResult ? `<span class="badge badge-blue">${r.callResult}</span>` : '<span class="text-muted">— Click para actualizar</span>'}
         </span>
-      </td>
-      <td>
-        <div class="flex gap-1">
-          <button class="btn btn-secondary btn-sm" onclick="openAddPhoneModal('${r.id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deletePhoneRecord('${r.id}')">🗑</button>
-        </div>
       </td>
     </tr>`).join('');
 }
