@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2.2 - fix observation dropdown selection -->
+<!-- v2.3 - observation modal picker for mobile -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -164,6 +164,17 @@
       </section>
 
     </main>
+  </div>
+</div>
+
+<!-- Observation Picker Modal -->
+<div class="modal-overlay" id="modal-obs-picker">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Seleccionar Observación</span>
+      <button class="modal-close" onclick="closeModal('modal-obs-picker')">✕</button>
+    </div>
+    <div class="modal-body" id="obs-picker-buttons"></div>
   </div>
 </div>
 
@@ -442,35 +453,8 @@ function escHtml(str) { return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
 window.inlineEditDoor = function(id, field, current, cell) {
   if (field === 'observation') {
-    // Show preset dropdown for observation
-    const ps = settings.doorStatuses || [];
-    const sel = document.createElement('select');
-    sel.className = 'cell-input';
-    sel.innerHTML = `<option value="">— Seleccionar —</option>` +
-      ps.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('') +
-      `<option value="__custom">Otro...</option>`;
-    cell.innerHTML = '';
-    cell.appendChild(sel);
-    sel.focus();
-
-    let saved = false;
-    sel.addEventListener('mousedown', () => { saved = false; });
-    sel.addEventListener('change', async () => {
-      saved = true;
-      let val = sel.value;
-      if (!val) { renderDoorTable(); return; }
-      if (val === '__custom') {
-        val = prompt('Observación:', current) || '';
-        if (!val) { renderDoorTable(); return; }
-      }
-      const addr = addresses.find(a => a.id === id);
-      if (addr) addr[field] = val;
-      await DB.saveAddress(currentTerrId, { [field]: val }, id);
-      renderDoorTable();
-    });
-    sel.addEventListener('blur', () => {
-      setTimeout(() => { if (!saved) renderDoorTable(); }, 400);
-    });
+    // Open a proper modal picker instead of inline dropdown
+    openObservationPicker(id, current);
   } else {
     const isDate = field === 'visitDate';
     const input = document.createElement('input');
@@ -491,6 +475,34 @@ window.inlineEditDoor = function(id, field, current, cell) {
     input.addEventListener('blur', save);
     input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') renderDoorTable(); });
   }
+};
+
+let observationTargetId = null;
+window.openObservationPicker = function(id, current) {
+  observationTargetId = id;
+  const ps = settings.doorStatuses || [];
+  document.getElementById('obs-picker-buttons').innerHTML = ps.map(s =>
+    `<button class="btn ${s === current ? 'btn-primary' : 'btn-secondary'} w-full" style="justify-content:flex-start;margin-bottom:0.5rem;" onclick="selectObservation('${s}')">${s}</button>`
+  ).join('') +
+  `<button class="btn btn-ghost w-full" style="justify-content:flex-start;margin-bottom:0.5rem;" onclick="selectObservation('')">— Limpiar observación</button>` +
+  `<button class="btn btn-ghost w-full" style="justify-content:flex-start;" onclick="selectObservationCustom()">✏️ Escribir manualmente...</button>`;
+  document.getElementById('modal-obs-picker').classList.add('open');
+};
+
+window.selectObservation = async function(val) {
+  closeModal('modal-obs-picker');
+  const addr = addresses.find(a => a.id === observationTargetId);
+  if (!addr) return;
+  addr.observation = val;
+  await DB.saveAddress(currentTerrId, { observation: val }, observationTargetId);
+  renderDoorTable();
+};
+
+window.selectObservationCustom = function() {
+  closeModal('modal-obs-picker');
+  const addr = addresses.find(a => a.id === observationTargetId);
+  const val = prompt('Observación:', addr?.observation || '') || '';
+  if (val !== null) selectObservation(val);
 };
 
 window.openAddAddressModal = function(id = null) {
