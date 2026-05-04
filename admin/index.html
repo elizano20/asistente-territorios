@@ -694,7 +694,6 @@ window.openTerritoryModal = function(id = null) {
     document.getElementById('terr-streets').value = t.streets || '';
     document.getElementById('terr-startpoint').value = t.startPoint || '';
     document.getElementById('terr-maplink').value = t.mapLink || '';
-    document.getElementById('terr-mapimage').value = t.mapUrl || '';
     document.getElementById('terr-notes').value = t.notes || '';
     if (t.mapUrl) {
       document.getElementById('map-preview-img').src = t.mapUrl;
@@ -706,7 +705,6 @@ window.openTerritoryModal = function(id = null) {
     document.getElementById('terr-streets').value = '';
     document.getElementById('terr-startpoint').value = '';
     document.getElementById('terr-maplink').value = '';
-    document.getElementById('terr-mapimage').value = '';
     document.getElementById('terr-notes').value = '';
   }
   document.getElementById('modal-territory').classList.add('open');
