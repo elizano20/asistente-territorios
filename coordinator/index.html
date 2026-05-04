@@ -68,11 +68,42 @@
     </div>
     <div class="page">
       <div id="dash-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem;margin-bottom:1.5rem;"></div>
-      <div id="expired-banner" style="display:none;background:rgba(251,111,111,0.08);border:1px solid rgba(251,111,111,0.3);border-radius:var(--radius);padding:0.8rem 1rem;color:var(--red);font-size:0.85rem;margin-bottom:1rem;">
+      <div id="expired-banner" style="display:none;background:var(--red-light);border:1px solid #fecdca;border-radius:var(--radius);padding:0.8rem 1rem;color:var(--red);font-size:0.85rem;margin-bottom:1rem;">
         ⚠️ Tienes territorios vencidos. Por favor devuélvelos lo antes posible.
       </div>
-      <h3 style="font-family:var(--font-head);margin-bottom:1rem;" id="dash-heading">Mis Territorios</h3>
+
+      <!-- Active Campaign Banner -->
+      <div id="campaign-banner" style="display:none;background:var(--accent-light);border:1px solid #c7d7fd;border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+          <div>
+            <div style="font-weight:700;color:var(--accent);font-family:var(--font-head);">🏳️ <span id="camp-banner-name"></span></div>
+            <div class="text-sm text-muted" id="camp-banner-dates"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-view-campaign">Ver Campaña →</button>
+        </div>
+        <!-- My progress -->
+        <div style="margin-top:0.8rem;">
+          <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:0.3rem;">
+            <span id="camp-my-progress">0 / 0 completados</span>
+            <span id="camp-my-pct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="camp-my-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <h3 style="font-family:var(--font-head);margin-bottom:1rem;">Mis Territorios</h3>
       <div id="my-terr-list"></div>
+    </div>
+  </div>
+
+  <!-- Campaign View -->
+  <div id="view-campaign" style="display:none">
+    <div class="sticky-bar">
+      <button class="btn btn-ghost btn-sm" id="btn-back-campaign">← Regresar</button>
+      <span style="font-weight:600;font-family:var(--font-head);color:var(--accent);" id="camp-view-title">Campaña</span>
+    </div>
+    <div class="page">
+      <div id="camp-terr-list"></div>
     </div>
   </div>
 
@@ -230,6 +261,7 @@ Auth.onReady(async (user) => {
   });
   settings = await DB.getSettings();
   await loadMyTerritories(profile.uid);
+  await loadActiveCampaign(profile.uid);
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   Lang.apply();
@@ -417,6 +449,104 @@ document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('c
 document.getElementById('btn-add-phone').addEventListener('click', () => openEditPhone(null));
 document.getElementById('btn-back').addEventListener('click', () => { document.getElementById('view-detail').style.display = 'none'; document.getElementById('view-dashboard').style.display = 'block'; window.scrollTo(0, 0); });
 document.getElementById('btn-share').addEventListener('click', () => { if (!currentTerrId) return; const url = `${window.location.origin}/view/?t=${currentTerrId}`; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => Utils.toast('Enlace copiado', 'success')); else prompt('Enlace:', url); });
+document.getElementById('btn-back-campaign').addEventListener('click', () => { document.getElementById('view-campaign').style.display = 'none'; document.getElementById('view-dashboard').style.display = 'block'; window.scrollTo(0, 0); });
+document.getElementById('btn-view-campaign').addEventListener('click', () => openCampaignView());
+
+// ── Campaign Functions ────────────────────────────────────────────────────────
+let activeCampaign = null, myCampaignAssignments = [], coordProfileId = null;
+
+async function loadActiveCampaign(coordId) {
+  coordProfileId = coordId;
+  activeCampaign = await DB.getActiveCampaign();
+  if (!activeCampaign) {
+    document.getElementById('campaign-banner').style.display = 'none';
+    return;
+  }
+  myCampaignAssignments = await DB.getCampaignAssignmentsForCoordinator(activeCampaign.id, coordId);
+  if (!myCampaignAssignments.length) {
+    document.getElementById('campaign-banner').style.display = 'none';
+    return;
+  }
+
+  // Show banner
+  document.getElementById('campaign-banner').style.display = 'block';
+  document.getElementById('camp-banner-name').textContent = activeCampaign.name;
+  document.getElementById('camp-banner-dates').textContent = `${Utils.fmtDate(activeCampaign.startDate)} — ${Utils.fmtDate(activeCampaign.endDate)}`;
+
+  const completed = myCampaignAssignments.filter(a => a.status === 'completado').length;
+  const total = myCampaignAssignments.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  document.getElementById('camp-my-progress').textContent = `${completed} / ${total} completados`;
+  document.getElementById('camp-my-pct').textContent = `${pct}%`;
+  document.getElementById('camp-my-bar').style.width = `${pct}%`;
+}
+
+function openCampaignView() {
+  if (!activeCampaign) return;
+  document.getElementById('camp-view-title').textContent = `🏳️ ${activeCampaign.name}`;
+  renderCampaignTerritories();
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-campaign').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function renderCampaignTerritories() {
+  const completed = myCampaignAssignments.filter(a => a.status === 'completado').length;
+  const total = myCampaignAssignments.length;
+
+  let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1rem;box-shadow:var(--shadow-sm);">
+    <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;margin-bottom:0.3rem;">${activeCampaign.name}</div>
+    ${activeCampaign.description ? `<div class="text-sm text-muted" style="margin-bottom:0.8rem;">${activeCampaign.description}</div>` : ''}
+    <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:0.3rem;">
+      <span>${completed} / ${total} territorios completados</span>
+      <span>${total > 0 ? Math.round((completed/total)*100) : 0}%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${total > 0 ? Math.round((completed/total)*100) : 0}%;background:${completed===total?'var(--green)':'var(--accent)'}"></div></div>
+  </div>`;
+
+  html += myCampaignAssignments.map(a => {
+    const isComplete = a.status === 'completado';
+    const terr = myTerritories.find(t => t.id === a.territoryId) || { number: a.territoryNumber, streets: '' };
+    return `<div style="background:var(--surface);border:1px solid ${isComplete ? '#a9efd1' : 'var(--border)'};border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.7rem;box-shadow:var(--shadow-sm);${isComplete ? 'background:var(--green-light);' : ''}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;">Territorio ${a.territoryNumber}</div>
+          ${terr.streets ? `<div class="text-sm text-muted">${terr.streets}</div>` : ''}
+          ${isComplete ? `<div class="text-sm" style="color:var(--green);margin-top:0.2rem;">✅ Completado ${a.completedDate ? Utils.fmtDate(a.completedDate) : ''}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          ${terr.mapUrl ? `<a href="${terr.mapUrl}" target="_blank" class="btn btn-ghost btn-sm">🗺️ Mapa</a>` : ''}
+          ${terr.mapLink ? `<a href="${terr.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭 Navegar</a>` : ''}
+          <button class="btn ${isComplete ? 'btn-secondary' : 'btn-green'} btn-sm camp-complete-btn" data-id="${a.id}" data-complete="${isComplete}">
+            ${isComplete ? '↩ Desmarcar' : '✅ Marcar Completado'}
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('camp-terr-list').innerHTML = html;
+
+  document.querySelectorAll('.camp-complete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const isComplete = btn.dataset.complete === 'true';
+      btn.disabled = true;
+      btn.textContent = '...';
+      await DB.markCampaignTerritoryComplete(id, !isComplete);
+      // Update local state
+      const a = myCampaignAssignments.find(x => x.id === id);
+      if (a) {
+        a.status = !isComplete ? 'completado' : 'pendiente';
+        a.completedDate = !isComplete ? Utils.today() : null;
+      }
+      // Refresh banner counts
+      await loadActiveCampaign(coordProfileId);
+      renderCampaignTerritories();
+      Utils.toast(!isComplete ? '✅ Territorio completado' : 'Desmarcado', 'success');
+    });
+  });
+}
 
 window.Auth = Auth;
 </script>
