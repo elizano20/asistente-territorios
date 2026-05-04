@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.0 - clean rewrite, no inline handlers -->
+<!-- v3.2 - fix map display + phone delete - 05/03/2026 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -9,12 +9,12 @@
 <link rel="stylesheet" href="/assets/app.css">
 <style>
   .terr-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
-  .terr-card-map{width:100%;height:160px;object-fit:cover;display:block;}
+  .terr-card-map{width:100%;height:180px;object-fit:contain;display:block;background:#f3f4f8;}
   .terr-card-body{padding:1rem 1.2rem;}
   .terr-card-num{font-family:var(--font-head);font-weight:800;font-size:1.4rem;}
   .terr-card-streets{color:var(--muted);font-size:0.82rem;margin-top:0.2rem;}
   .terr-card-footer{padding:0.7rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;flex-wrap:wrap;}
-  .detail-map{width:100%;display:block;max-height:300px;object-fit:cover;}
+  .detail-map{width:100%;display:block;object-fit:contain;background:#f3f4f8;}
   .detail-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
   .detail-header-body{padding:1.2rem;}
   .detail-title{font-family:var(--font-head);font-weight:800;font-size:1.6rem;}
@@ -218,7 +218,16 @@ Auth.onReady(async (user) => {
   const profile = Auth.currentProfile;
   if (!profile) { window.location.href = '/index.html'; return; }
   document.getElementById('dash-user-name').textContent = profile.name || user.email;
-  document.getElementById('btn-logout').addEventListener('click', () => Auth.logout());
+  document.getElementById('btn-logout').addEventListener('click', async (e) => {
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      await Auth.logout();
+    } catch {
+      window.location.href = '/index.html';
+    }
+  });
   settings = await DB.getSettings();
   await loadMyTerritories(profile.uid);
   document.getElementById('loading-screen').style.display = 'none';
@@ -350,10 +359,20 @@ function renderPhoneList() {
       <div style="font-weight:700;font-size:0.85rem;min-width:60px;">${r.address}</div>
       <div style="font-size:0.82rem;color:var(--muted);min-width:100px;">${r.name || '—'}</div>
       <div style="font-family:var(--font-mono);font-size:0.82rem;min-width:110px;">${r.phone || '—'}</div>
-      <div style="flex:1;">${r.callResult ? `<span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.72rem;font-family:var(--font-mono);background:rgba(79,142,247,0.12);color:var(--accent);">${r.callResult}</span>` : ''}${r.date ? `<span style="font-size:0.75rem;color:var(--muted);margin-left:0.3rem;">${Utils.fmtDate(r.date)}</span>` : ''}</div>
-      <button class="edit-btn edit-phone-btn" data-id="${r.id}">✏️</button>
+      <div style="flex:1;">${r.callResult ? `<span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.72rem;background:var(--accent-light);color:var(--accent);font-weight:600;">${r.callResult}</span>` : ''}${r.date ? `<span style="font-size:0.75rem;color:var(--muted);margin-left:0.3rem;">${Utils.fmtDate(r.date)}</span>` : ''}</div>
+      <div style="display:flex;gap:0.3rem;">
+        <button class="edit-btn edit-phone-btn" data-id="${r.id}" title="Editar">✏️</button>
+        <button class="edit-btn del-phone-btn" data-id="${r.id}" title="Eliminar" style="color:var(--red);border-color:#fecdca;">🗑</button>
+      </div>
     </div>`).join('');
   document.querySelectorAll('.edit-phone-btn').forEach(btn => btn.addEventListener('click', () => openEditPhone(btn.dataset.id)));
+  document.querySelectorAll('.del-phone-btn').forEach(btn => btn.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar este registro telefónico?')) return;
+    await DB.deletePhoneRecord(currentTerrId, btn.dataset.id);
+    phoneRecords = await DB.getPhoneRecords(currentTerrId);
+    renderPhoneList();
+    Utils.toast('Registro eliminado', 'success');
+  }));
 }
 
 function openEditPhone(id) {
