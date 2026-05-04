@@ -224,6 +224,7 @@ const DB = {
   async saveSettings(data) {
     await setDoc(doc(db, 'settings', 'global'), data, { merge: true });
   },
+  
 
   // ── Campaigns ─────────────────────────────────────────────────────────────
   async getCampaigns() {
