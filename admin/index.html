@@ -37,6 +37,7 @@
         <a class="nav-item" href="#" onclick="showSection('coordinators')"><span class="icon">👥</span><span data-i18n="navCoordinators">Coordinadores</span></a>
         <a class="nav-item" href="#" onclick="showSection('coverage')"><span class="icon">🗂️</span><span data-i18n="navCoverage">Cobertura</span></a>
         <a class="nav-item" href="#" onclick="showSection('history')"><span class="icon">📚</span><span data-i18n="navHistory">Historial</span></a>
+        <a class="nav-item" href="#" onclick="showSection('campaigns')"><span class="icon">🏳️</span><span>Campañas</span></a>
         <a class="nav-item" href="#" onclick="showSection('settings')"><span class="icon">⚙️</span><span data-i18n="navSettings">Configuración</span></a>
       </nav>
       <div class="sidebar-bottom">
@@ -209,6 +210,78 @@
               </table>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- ── CAMPAIGNS ── -->
+      <section id="sec-campaigns" style="display:none">
+        <div class="page-header">
+          <h2>🏳️ Campañas</h2>
+          <button class="btn btn-primary" onclick="openCampaignModal()">+ Nueva Campaña</button>
+        </div>
+        <div class="page-body">
+
+          <!-- Active campaign banner -->
+          <div id="active-campaign-banner" style="display:none;background:var(--accent-light);border:1px solid #c7d7fd;border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.5rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+              <div>
+                <div style="font-weight:700;color:var(--accent);" id="active-campaign-name"></div>
+                <div class="text-sm text-muted" id="active-campaign-dates"></div>
+              </div>
+              <div style="display:flex;gap:0.5rem;">
+                <button class="btn btn-primary btn-sm" onclick="openAutoAssignCampaign()">⚡ Auto Asignar</button>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('campaign-coverage-wrap').scrollIntoView({behavior:'smooth'})">📊 Ver Cobertura</button>
+                <button class="btn btn-danger btn-sm" onclick="closeCampaign()">Cerrar Campaña</button>
+              </div>
+            </div>
+            <!-- Progress bar -->
+            <div style="margin-top:0.8rem;">
+              <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:0.3rem;">
+                <span id="campaign-progress-text">0 / 88 territorios completados</span>
+                <span id="campaign-progress-pct">0%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" id="campaign-progress-bar" style="width:0%"></div></div>
+            </div>
+          </div>
+
+          <!-- Campaign coverage grid -->
+          <div id="campaign-coverage-wrap" style="display:none;margin-bottom:1.5rem;">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Cobertura de Campaña</span>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                  <span style="font-size:0.75rem;color:var(--muted);">🟢 Completado &nbsp; ⬜ Pendiente</span>
+                  <button class="btn btn-secondary btn-sm" onclick="sendDailyReport()">📧 Enviar Reporte</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="campaign-coverage-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:0.5rem;"></div>
+              </div>
+            </div>
+
+            <!-- Per-coordinator breakdown -->
+            <div class="card" style="margin-top:1rem;">
+              <div class="card-header"><span class="card-title">Por Coordinador</span></div>
+              <div class="table-responsive">
+                <table>
+                  <thead><tr><th>Coordinador</th><th>Asignados</th><th>Completados</th><th>Progreso</th></tr></thead>
+                  <tbody id="campaign-coord-breakdown"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campaign list -->
+          <div class="table-wrap">
+            <div class="table-toolbar"><span style="font-weight:600;">Todas las Campañas</span></div>
+            <div class="table-responsive">
+              <table>
+                <thead><tr><th>Nombre</th><th>Descripción</th><th>Inicio</th><th>Fin</th><th>Estado</th><th></th></tr></thead>
+                <tbody id="campaigns-table"></tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -517,6 +590,92 @@
   </div>
 </div>
 
+<!-- Campaign Modal -->
+<div class="modal-overlay" id="modal-campaign">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="campaign-modal-title">Nueva Campaña</span>
+      <button class="modal-close" onclick="closeModal('modal-campaign')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="campaign-id">
+      <div class="form-group">
+        <label class="form-label">Nombre de la Campaña</label>
+        <input type="text" class="form-control" id="campaign-name" placeholder="Ej: Memorial 2026, Campaña de Revistas">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción</label>
+        <textarea class="form-control" id="campaign-desc" rows="2" placeholder="Descripción de la campaña..."></textarea>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Fecha de Inicio</label>
+          <input type="date" class="form-control" id="campaign-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de Fin</label>
+          <input type="date" class="form-control" id="campaign-end">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-campaign')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCampaign()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Auto Assign Campaign Modal -->
+<div class="modal-overlay" id="modal-campaign-assign">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">⚡ Auto Asignar Campaña</span>
+      <button class="modal-close" onclick="closeModal('modal-campaign-assign')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted text-sm mb-2">Los territorios se distribuirán en bloques consecutivos respetando el límite de cada coordinador. Se rotará basado en el historial de campañas anteriores.</p>
+      <div id="campaign-assign-preview" style="max-height:360px;overflow-y:auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-campaign-assign')">Cancelar</button>
+      <button class="btn btn-green" onclick="doAutoAssignCampaign()">Confirmar Asignación →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Email Report Settings Modal -->
+<div class="modal-overlay" id="modal-report-settings">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📧 Configurar Reporte Diario</span>
+      <button class="modal-close" onclick="closeModal('modal-report-settings')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted text-sm mb-2">El reporte se enviará diariamente con el progreso de la campaña activa. Usa <a href="https://emailjs.com" target="_blank">EmailJS.com</a> (gratis).</p>
+      <div class="form-group">
+        <label class="form-label">Correos destinatarios (separados por coma)</label>
+        <input type="text" class="form-control" id="report-emails" placeholder="admin@email.com, otro@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">EmailJS Service ID</label>
+        <input type="text" class="form-control" id="report-service-id" placeholder="service_xxxxxxx">
+      </div>
+      <div class="form-group">
+        <label class="form-label">EmailJS Template ID</label>
+        <input type="text" class="form-control" id="report-template-id" placeholder="template_xxxxxxx">
+      </div>
+      <div class="form-group">
+        <label class="form-label">EmailJS Public Key</label>
+        <input type="text" class="form-control" id="report-public-key" placeholder="xxxxxxxxxxxxxxx">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-report-settings')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveReportSettings()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script src="/assets/i18n.js"></script>
 <script type="module">
 import { Auth, DB, Store, Utils } from '/assets/firebase.js';
@@ -587,6 +746,7 @@ window.showSection = function(name) {
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick')?.includes(name)) n.classList.add('active');
   });
+  if (name === 'campaigns') renderCampaigns();
   if (window.innerWidth < 768) toggleSidebar();
 };
 
@@ -1272,6 +1432,339 @@ window.importAllData = function(e) {
     } catch { Utils.toast(Lang.t('errorUploading'), 'error'); }
   };
   r.readAsText(file);
+};
+
+// ── Campaigns ─────────────────────────────────────────────────────────────────
+let campaigns = [], activeCampaign = null, campaignAssignments = [], campaignAutoAssignPlan = [];
+
+async function loadCampaigns() {
+  campaigns = await DB.getCampaigns();
+  activeCampaign = campaigns.find(c => c.status === 'activa') || null;
+  if (activeCampaign) {
+    campaignAssignments = await DB.getCampaignAssignments(activeCampaign.id);
+  }
+}
+
+window.renderCampaigns = async function() {
+  await loadCampaigns();
+
+  // Active campaign banner
+  const banner = document.getElementById('active-campaign-banner');
+  const coverWrap = document.getElementById('campaign-coverage-wrap');
+  if (activeCampaign) {
+    banner.style.display = 'block';
+    coverWrap.style.display = 'block';
+    document.getElementById('active-campaign-name').textContent = `🏳️ ${activeCampaign.name}`;
+    document.getElementById('active-campaign-dates').textContent = `${Utils.fmtDate(activeCampaign.startDate)} — ${Utils.fmtDate(activeCampaign.endDate)}`;
+    const completed = campaignAssignments.filter(a => a.status === 'completado').length;
+    const total = campaignAssignments.length;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    document.getElementById('campaign-progress-text').textContent = `${completed} / ${total} territorios completados`;
+    document.getElementById('campaign-progress-pct').textContent = `${pct}%`;
+    document.getElementById('campaign-progress-bar').style.width = `${pct}%`;
+    renderCampaignCoverage();
+    renderCampaignCoordBreakdown();
+  } else {
+    banner.style.display = 'none';
+    coverWrap.style.display = 'none';
+  }
+
+  // Campaign list table
+  document.getElementById('campaigns-table').innerHTML = campaigns.map(c => {
+    const statusBadge = c.status === 'activa' ? '<span class="badge badge-green">Activa</span>' :
+      c.status === 'completada' ? '<span class="badge badge-gray">Completada</span>' :
+      '<span class="badge badge-yellow">Borrador</span>';
+    return `<tr>
+      <td><strong>${c.name}</strong></td>
+      <td class="text-muted">${c.description || '—'}</td>
+      <td>${Utils.fmtDate(c.startDate)}</td>
+      <td>${Utils.fmtDate(c.endDate)}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <div class="flex gap-1">
+          ${c.status !== 'activa' ? `<button class="btn btn-secondary btn-sm" onclick="activateCampaign('${c.id}')">▶ Activar</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="openCampaignModal('${c.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCampaignConfirm('${c.id}')">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">Sin campañas — crea tu primera campaña</td></tr>`;
+};
+
+function renderCampaignCoverage() {
+  const grid = document.getElementById('campaign-coverage-grid');
+  grid.innerHTML = territories.map(t => {
+    const assignment = campaignAssignments.find(a => a.territoryId === t.id);
+    const isComplete = assignment?.status === 'completado';
+    const hasAssignment = !!assignment;
+    const coordName = assignment ? (coordinators.find(c => c.id === assignment.coordinatorId)?.name?.split(',')[0] || '—') : '';
+    return `<div style="background:${isComplete ? 'var(--green-light)' : hasAssignment ? 'var(--accent-light)' : 'var(--surface2)'};border:1px solid ${isComplete ? '#a9efd1' : hasAssignment ? '#c7d7fd' : 'var(--border)'};border-radius:8px;padding:0.5rem;text-align:center;cursor:default;" title="${coordName}">
+      <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:${isComplete ? 'var(--green)' : hasAssignment ? 'var(--accent)' : 'var(--muted)'};">${t.number}</div>
+      <div style="font-size:0.58rem;color:var(--muted);margin-top:0.1rem;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${isComplete ? '✅' : coordName || '—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderCampaignCoordBreakdown() {
+  const rows = coordinators.map(c => {
+    const myAssignments = campaignAssignments.filter(a => a.coordinatorId === c.id);
+    if (!myAssignments.length) return '';
+    const completed = myAssignments.filter(a => a.status === 'completado').length;
+    const total = myAssignments.length;
+    const pct = Math.round((completed / total) * 100);
+    return `<tr>
+      <td><strong>${c.name}</strong></td>
+      <td>${total}</td>
+      <td><span class="badge ${completed === total ? 'badge-green' : 'badge-blue'}">${completed}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <div class="progress-bar" style="flex:1;"><div class="progress-fill" style="width:${pct}%;background:${completed===total?'var(--green)':'var(--accent)'}"></div></div>
+          <span class="text-xs text-muted">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('campaign-coord-breakdown').innerHTML = rows || `<tr><td colspan="4" class="text-muted text-sm" style="padding:1rem;text-align:center;">Sin asignaciones</td></tr>`;
+}
+
+window.openCampaignModal = function(id = null) {
+  document.getElementById('campaign-id').value = id || '';
+  document.getElementById('campaign-modal-title').textContent = id ? 'Editar Campaña' : 'Nueva Campaña';
+  if (id) {
+    const c = campaigns.find(x => x.id === id);
+    document.getElementById('campaign-name').value = c.name || '';
+    document.getElementById('campaign-desc').value = c.description || '';
+    document.getElementById('campaign-start').value = c.startDate || '';
+    document.getElementById('campaign-end').value = c.endDate || '';
+  } else {
+    document.getElementById('campaign-name').value = '';
+    document.getElementById('campaign-desc').value = '';
+    document.getElementById('campaign-start').value = Utils.today();
+    document.getElementById('campaign-end').value = '';
+  }
+  document.getElementById('modal-campaign').classList.add('open');
+};
+
+window.saveCampaign = async function() {
+  const id = document.getElementById('campaign-id').value || null;
+  const name = document.getElementById('campaign-name').value.trim();
+  if (!name) { Utils.toast('Nombre requerido', 'error'); return; }
+  const data = {
+    name,
+    description: document.getElementById('campaign-desc').value.trim(),
+    startDate: document.getElementById('campaign-start').value,
+    endDate: document.getElementById('campaign-end').value,
+    status: id ? campaigns.find(c => c.id === id)?.status || 'borrador' : 'borrador'
+  };
+  await DB.saveCampaign(data, id);
+  Utils.toast('Campaña guardada', 'success');
+  closeModal('modal-campaign');
+  renderCampaigns();
+};
+
+window.activateCampaign = async function(id) {
+  // Deactivate any other active campaign first
+  for (const c of campaigns.filter(x => x.status === 'activa')) {
+    await DB.saveCampaign({ status: 'completada' }, c.id);
+  }
+  await DB.saveCampaign({ status: 'activa' }, id);
+  Utils.toast('Campaña activada', 'success');
+  renderCampaigns();
+};
+
+window.closeCampaign = async function() {
+  if (!activeCampaign) return;
+  if (!Utils.confirm('¿Cerrar esta campaña? Se marcará como completada.')) return;
+  await DB.saveCampaign({ status: 'completada' }, activeCampaign.id);
+  Utils.toast('Campaña cerrada', 'success');
+  renderCampaigns();
+};
+
+window.deleteCampaignConfirm = async function(id) {
+  if (!Utils.confirm('¿Eliminar esta campaña y todas sus asignaciones?')) return;
+  await DB.deleteCampaign(id);
+  Utils.toast('Campaña eliminada', 'success');
+  renderCampaigns();
+};
+
+// ── Campaign Auto Assign ───────────────────────────────────────────────────────
+window.openAutoAssignCampaign = async function() {
+  if (!activeCampaign) return;
+
+  // Get campaign history for rotation
+  const historyByCoord = {};
+  for (const c of coordinators) {
+    const hist = await DB.getCoordinatorCampaignHistory(c.id);
+    historyByCoord[c.id] = hist.map(h => h.territoryId);
+  }
+
+  // Sort territories sequentially
+  const sortedTerrs = [...territories].sort((a, b) =>
+    String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
+
+  // Active coordinators sorted by least recently worked territory
+  const activeCoords = coordinators.filter(c => (c.maxTerr ?? settings.maxTerr ?? 8) > 0);
+
+  // Determine starting territory for each coordinator based on history
+  // Find the highest territory index each coordinator worked previously
+  const coordStartIndex = {};
+  activeCoords.forEach(c => {
+    const worked = historyByCoord[c.id] || [];
+    if (!worked.length) {
+      coordStartIndex[c.id] = 0;
+    } else {
+      // Find the last territory index they worked
+      let maxIdx = -1;
+      worked.forEach(terrId => {
+        const idx = sortedTerrs.findIndex(t => t.id === terrId);
+        if (idx > maxIdx) maxIdx = idx;
+      });
+      coordStartIndex[c.id] = (maxIdx + 1) % sortedTerrs.length;
+    }
+  });
+
+  // Sort coordinators by their start index to assign sequential blocks
+  activeCoords.sort((a, b) => coordStartIndex[a.id] - coordStartIndex[b.id]);
+
+  // Assign sequential blocks
+  campaignAutoAssignPlan = [];
+  let terrIdx = 0;
+  const terrCount = sortedTerrs.length;
+
+  activeCoords.forEach(c => {
+    const max = c.maxTerr ?? settings.maxTerr ?? 8;
+    const block = [];
+    for (let i = 0; i < max && terrIdx < terrCount; i++) {
+      block.push(sortedTerrs[terrIdx % terrCount]);
+      terrIdx++;
+    }
+    if (block.length > 0) {
+      campaignAutoAssignPlan.push({ coordinatorId: c.id, territories: block });
+    }
+  });
+
+  // Show preview
+  document.getElementById('campaign-assign-preview').innerHTML = campaignAutoAssignPlan.map(plan => {
+    const coord = coordinators.find(c => c.id === plan.coordinatorId);
+    const isRotated = (coordStartIndex[plan.coordinatorId] || 0) > 0;
+    return `<div style="padding:0.8rem 0;border-bottom:1px solid var(--border);">
+      <div style="font-weight:700;margin-bottom:0.4rem;display:flex;align-items:center;gap:0.5rem;">
+        ${coord?.name}
+        ${isRotated ? '<span class="badge badge-blue">🔄 Rotado</span>' : '<span class="badge badge-gray">Inicio</span>'}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.3rem;">
+        ${plan.territories.map(t => `<span class="badge badge-blue">${t.number}</span>`).join('')}
+      </div>
+      <div class="text-muted text-sm">${plan.territories.length} territorio(s) — ${plan.territories[0]?.number} al ${plan.territories[plan.territories.length-1]?.number}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('modal-campaign-assign').classList.add('open');
+};
+
+window.doAutoAssignCampaign = async function() {
+  if (!activeCampaign || !campaignAutoAssignPlan.length) return;
+
+  // Clear existing assignments for this campaign
+  await DB.deleteCampaignAssignments(activeCampaign.id);
+
+  // Create new assignments
+  const assignments = [];
+  campaignAutoAssignPlan.forEach(plan => {
+    plan.territories.forEach(t => {
+      assignments.push({
+        campaignId: activeCampaign.id,
+        campaignName: activeCampaign.name,
+        territoryId: t.id,
+        territoryNumber: t.number,
+        coordinatorId: plan.coordinatorId,
+        status: 'pendiente',
+        completedDate: null
+      });
+    });
+  });
+
+  await DB.bulkSaveCampaignAssignments(assignments);
+  campaignAssignments = await DB.getCampaignAssignments(activeCampaign.id);
+  Utils.toast(`✅ ${assignments.length} territorios asignados`, 'success');
+  closeModal('modal-campaign-assign');
+  renderCampaigns();
+};
+
+// ── Email Report ───────────────────────────────────────────────────────────────
+window.sendDailyReport = async function() {
+  const reportSettings = await DB.getReportSettings();
+  if (!reportSettings.emailjsServiceId || !reportSettings.emailjsPublicKey) {
+    if (Utils.confirm('Primero configura los datos de EmailJS. ¿Abrir configuración?')) {
+      openReportSettings();
+    }
+    return;
+  }
+  if (!activeCampaign) { Utils.toast('No hay campaña activa', 'error'); return; }
+
+  const completed = campaignAssignments.filter(a => a.status === 'completado').length;
+  const total = campaignAssignments.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  // Build coordinator breakdown
+  const breakdown = coordinators.map(c => {
+    const myA = campaignAssignments.filter(a => a.coordinatorId === c.id);
+    if (!myA.length) return '';
+    const comp = myA.filter(a => a.status === 'completado').length;
+    return `${c.name}: ${comp}/${myA.length}`;
+  }).filter(Boolean).join('\n');
+
+  // Today's completions
+  const today = Utils.today();
+  const todayCompleted = campaignAssignments.filter(a => a.completedDate === today);
+
+  try {
+    // Load EmailJS
+    if (!window.emailjs) {
+      await new Promise((resolve) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+        s.onload = resolve;
+        document.head.appendChild(s);
+      });
+      window.emailjs.init(reportSettings.emailjsPublicKey);
+    }
+
+    const emails = (reportSettings.emails || '').split(',').map(e => e.trim()).filter(Boolean);
+    for (const email of emails) {
+      await window.emailjs.send(reportSettings.emailjsServiceId, reportSettings.emailjsTemplateId, {
+        to_email: email,
+        campaign_name: activeCampaign.name,
+        progress: `${completed}/${total} (${pct}%)`,
+        today_completed: todayCompleted.length > 0 ? todayCompleted.map(a => a.territoryNumber).join(', ') : 'Ninguno hoy',
+        breakdown,
+        report_date: new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      });
+    }
+    Utils.toast(`Reporte enviado a ${emails.length} destinatario(s)`, 'success');
+  } catch (err) {
+    Utils.toast('Error enviando reporte: ' + err.message, 'error');
+  }
+};
+
+window.openReportSettings = async function() {
+  const s = await DB.getReportSettings();
+  document.getElementById('report-emails').value = s.emails || '';
+  document.getElementById('report-service-id').value = s.emailjsServiceId || '';
+  document.getElementById('report-template-id').value = s.emailjsTemplateId || '';
+  document.getElementById('report-public-key').value = s.emailjsPublicKey || '';
+  document.getElementById('modal-report-settings').classList.add('open');
+};
+
+window.saveReportSettings = async function() {
+  await DB.saveReportSettings({
+    emails: document.getElementById('report-emails').value.trim(),
+    emailjsServiceId: document.getElementById('report-service-id').value.trim(),
+    emailjsTemplateId: document.getElementById('report-template-id').value.trim(),
+    emailjsPublicKey: document.getElementById('report-public-key').value.trim()
+  });
+  Utils.toast('Configuración guardada', 'success');
+  closeModal('modal-report-settings');
 };
 
 // Close modal on overlay click
