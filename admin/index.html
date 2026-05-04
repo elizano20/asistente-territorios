@@ -309,15 +309,19 @@
         <label class="form-label" data-i18n="territoryNotes">Notas</label>
         <textarea class="form-control" id="terr-notes" rows="2"></textarea>
       </div>
-      <!-- Map image URL -->
+      <!-- Map image upload -->
       <div class="form-group">
-        <label class="form-label" data-i18n="territoryMapImage">URL de Imagen del Mapa</label>
-        <input type="url" class="form-control" id="terr-mapimage" placeholder="https://drive.google.com/uc?export=view&id=FILE_ID">
-        <span class="form-hint">Pega el enlace directo de Google Drive, Dropbox, o cualquier imagen en línea</span>
-        <div id="map-preview" style="display:none;margin-top:0.7rem;">
+        <label class="form-label" data-i18n="territoryMapImage">Imagen del Mapa</label>
+        <div id="map-preview" style="display:none;margin-bottom:0.7rem;">
           <img id="map-preview-img" style="height:140px;border-radius:8px;border:1px solid var(--border);object-fit:cover;max-width:100%;">
+          <button type="button" class="btn btn-danger btn-sm mt-1" onclick="removeMapImage()">✕ Quitar imagen</button>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm mt-1" onclick="previewMapUrl()">👁 Vista previa</button>
+        <div class="file-upload" onclick="document.getElementById('map-file').click()">
+          <input type="file" id="map-file" accept="image/*" onchange="previewMap(event)">
+          <div class="upload-icon">🗺️</div>
+          <p data-i18n="uploadMapImage">Subir imagen del mapa</p>
+          <p class="text-xs text-muted mt-1">PNG, JPG hasta 5MB</p>
+        </div>
       </div>
       <!-- Address upload -->
       <div class="form-group">
@@ -676,9 +680,12 @@ window.openTerritoryModal = function(id = null) {
   document.getElementById('map-preview').style.display = 'none';
   document.getElementById('addr-preview').style.display = 'none';
   document.getElementById('phone-preview').style.display = 'none';
-  document.getElementById('map-file').value = '';
-  document.getElementById('addr-file').value = '';
-  document.getElementById('phone-file').value = '';
+  const addrFile = document.getElementById('addr-file');
+  const phoneFile = document.getElementById('phone-file');
+  const mapFile = document.getElementById('map-file');
+  if (addrFile) addrFile.value = '';
+  if (phoneFile) phoneFile.value = '';
+  if (mapFile) mapFile.value = '';
 
   if (id) {
     const t = territories.find(x => x.id === id);
@@ -687,7 +694,6 @@ window.openTerritoryModal = function(id = null) {
     document.getElementById('terr-streets').value = t.streets || '';
     document.getElementById('terr-startpoint').value = t.startPoint || '';
     document.getElementById('terr-maplink').value = t.mapLink || '';
-    document.getElementById('terr-mapimage').value = t.mapUrl || '';
     document.getElementById('terr-notes').value = t.notes || '';
     if (t.mapUrl) {
       document.getElementById('map-preview-img').src = t.mapUrl;
@@ -699,17 +705,24 @@ window.openTerritoryModal = function(id = null) {
     document.getElementById('terr-streets').value = '';
     document.getElementById('terr-startpoint').value = '';
     document.getElementById('terr-maplink').value = '';
-    document.getElementById('terr-mapimage').value = '';
     document.getElementById('terr-notes').value = '';
   }
   document.getElementById('modal-territory').classList.add('open');
 };
 
-window.previewMapUrl = function() {
-  const url = document.getElementById('terr-mapimage').value.trim();
-  if (!url) return;
+window.previewMap = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingMapFile = file;
+  const url = URL.createObjectURL(file);
   document.getElementById('map-preview-img').src = url;
   document.getElementById('map-preview').style.display = 'block';
+};
+
+window.removeMapImage = function() {
+  pendingMapFile = null;
+  document.getElementById('map-preview').style.display = 'none';
+  document.getElementById('map-file').value = '';
 };
 
 window.previewAddresses = async function(e) {
@@ -747,7 +760,6 @@ window.saveTerritory = async function() {
     streets: document.getElementById('terr-streets').value.trim(),
     startPoint: document.getElementById('terr-startpoint').value.trim(),
     mapLink: document.getElementById('terr-maplink').value.trim(),
-    mapUrl: document.getElementById('terr-mapimage').value.trim(),
     notes: document.getElementById('terr-notes').value.trim(),
     state: id ? territories.find(t => t.id === id)?.state || 'Disponible' : 'Disponible',
   };
@@ -756,6 +768,13 @@ window.saveTerritory = async function() {
 
   try {
     const terrId = await DB.saveTerritory(data, id);
+
+    // Upload map image to Firebase Storage
+    if (pendingMapFile) {
+      const url = await Store.uploadMapImage(terrId, pendingMapFile);
+      await DB.saveTerritory({ mapUrl: url }, terrId);
+      data.mapUrl = url;
+    }
 
     // Upload addresses
     if (pendingAddresses.length > 0) {
