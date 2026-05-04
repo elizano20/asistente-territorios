@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.2 - fix map display + phone delete - 05/03/2026 -->
+<!-- v3.3 - campaign Ver Territorio button -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -309,11 +309,12 @@ function renderDashboard() {
   }).join('');
   document.getElementById('my-terr-list').innerHTML = html;
   document.querySelectorAll('.open-terr-btn').forEach(btn => {
-    btn.addEventListener('click', () => openTerritory(btn.dataset.id));
+    btn.addEventListener('click', () => { returnToCampaign = false; openTerritory(btn.dataset.id); });
   });
 }
 
 async function openTerritory(terrId) {
+  returnToCampaign = returnToCampaign || false;
   currentTerrId = terrId;
   const t = myTerritories.find(x => x.id === terrId);
   if (!t) return;
@@ -447,7 +448,16 @@ function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m =
 document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', e => { if (e.target === el) closeModals(); }));
 
 document.getElementById('btn-add-phone').addEventListener('click', () => openEditPhone(null));
-document.getElementById('btn-back').addEventListener('click', () => { document.getElementById('view-detail').style.display = 'none'; document.getElementById('view-dashboard').style.display = 'block'; window.scrollTo(0, 0); });
+document.getElementById('btn-back').addEventListener('click', () => {
+  document.getElementById('view-detail').style.display = 'none';
+  if (returnToCampaign) {
+    returnToCampaign = false;
+    document.getElementById('view-campaign').style.display = 'block';
+  } else {
+    document.getElementById('view-dashboard').style.display = 'block';
+  }
+  window.scrollTo(0, 0);
+});
 document.getElementById('btn-share').addEventListener('click', () => { if (!currentTerrId) return; const url = `${window.location.origin}/view/?t=${currentTerrId}`; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => Utils.toast('Enlace copiado', 'success')); else prompt('Enlace:', url); });
 document.getElementById('btn-back-campaign').addEventListener('click', () => { document.getElementById('view-campaign').style.display = 'none'; document.getElementById('view-dashboard').style.display = 'block'; window.scrollTo(0, 0); });
 document.getElementById('btn-view-campaign').addEventListener('click', () => openCampaignView());
@@ -506,8 +516,8 @@ function renderCampaignTerritories() {
 
   html += myCampaignAssignments.map(a => {
     const isComplete = a.status === 'completado';
-    const terr = myTerritories.find(t => t.id === a.territoryId) || { number: a.territoryNumber, streets: '' };
-    return `<div style="background:var(--surface);border:1px solid ${isComplete ? '#a9efd1' : 'var(--border)'};border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.7rem;box-shadow:var(--shadow-sm);${isComplete ? 'background:var(--green-light);' : ''}">
+    const terr = myTerritories.find(t => t.id === a.territoryId) || { id: a.territoryId, number: a.territoryNumber, streets: '' };
+    return `<div style="background:${isComplete ? 'var(--green-light)' : 'var(--surface)'};border:1px solid ${isComplete ? '#a9efd1' : 'var(--border)'};border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.7rem;box-shadow:var(--shadow-sm);">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
         <div>
           <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;">Territorio ${a.territoryNumber}</div>
@@ -515,7 +525,7 @@ function renderCampaignTerritories() {
           ${isComplete ? `<div class="text-sm" style="color:var(--green);margin-top:0.2rem;">✅ Completado ${a.completedDate ? Utils.fmtDate(a.completedDate) : ''}</div>` : ''}
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          ${terr.mapUrl ? `<a href="${terr.mapUrl}" target="_blank" class="btn btn-ghost btn-sm">🗺️ Mapa</a>` : ''}
+          <button class="btn btn-secondary btn-sm camp-view-terr-btn" data-terrid="${a.territoryId}" data-terrnum="${a.territoryNumber}">📋 Ver Territorio</button>
           ${terr.mapLink ? `<a href="${terr.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭 Navegar</a>` : ''}
           <button class="btn ${isComplete ? 'btn-secondary' : 'btn-green'} btn-sm camp-complete-btn" data-id="${a.id}" data-complete="${isComplete}">
             ${isComplete ? '↩ Desmarcar' : '✅ Marcar Completado'}
@@ -526,6 +536,13 @@ function renderCampaignTerritories() {
   }).join('');
 
   document.getElementById('camp-terr-list').innerHTML = html;
+
+  // Ver Territorio from campaign
+  document.querySelectorAll('.camp-view-terr-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await openTerritoryFromCampaign(btn.dataset.terrid, btn.dataset.terrnum);
+    });
+  });
 
   document.querySelectorAll('.camp-complete-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -546,6 +563,29 @@ function renderCampaignTerritories() {
       Utils.toast(!isComplete ? '✅ Territorio completado' : 'Desmarcado', 'success');
     });
   });
+}
+
+// Opens a territory from the campaign view — fetches full territory data
+let returnToCampaign = false;
+
+async function openTerritoryFromCampaign(terrId, terrNumber) {
+  returnToCampaign = true;
+  // Fetch full territory data since it may not be in myTerritories
+  let t = myTerritories.find(x => x.id === terrId);
+  if (!t) {
+    t = await DB.getTerritory(terrId);
+  }
+  if (!t) {
+    Utils.toast('Territorio no encontrado', 'error');
+    return;
+  }
+  // Temporarily add to myTerritories if not there so openTerritory works
+  if (!myTerritories.find(x => x.id === terrId)) {
+    myTerritories.push(t);
+  }
+  // Hide campaign view before opening territory
+  document.getElementById('view-campaign').style.display = 'none';
+  await openTerritory(terrId);
 }
 
 window.Auth = Auth;
