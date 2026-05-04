@@ -1204,12 +1204,24 @@ function renderCoordinators() {
       <td>
         <div class="flex gap-1">
           <button class="btn btn-secondary btn-sm" onclick="openCoordinatorModal('${c.id}')">✏️</button>
+          <button class="btn btn-secondary btn-sm" onclick="sendCoordReset('${c.email}')" title="Enviar reset de contraseña">🔑</button>
           <button class="btn btn-danger btn-sm" onclick="deleteCoordConfirm('${c.id}')">🗑</button>
         </div>
       </td>
     </tr>`;
   }).join('') || `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">Sin coordinadores</td></tr>`;
 }
+
+window.sendCoordReset = async function(email) {
+  if (!Utils.confirm(`¿Enviar correo de restablecimiento de contraseña a ${email}?`)) return;
+  try {
+    await Auth.resetPassword(email);
+    Utils.toast(`✅ Correo enviado a ${email}`, 'success');
+  } catch (err) {
+    console.error('Reset error:', err);
+    Utils.toast('Error: ' + err.message, 'error');
+  }
+};
 
 window.updateCoordMax = async function(uid, val) {
   const n = parseInt(val);
