@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.3 - campaign Ver Territorio button -->
+<!-- v3.4 - clear observation button -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -177,6 +177,7 @@
         <label class="form-label">Observación</label>
         <div id="obs-btns"></div>
         <input type="text" class="form-control" id="edit-obs" placeholder="O escribe manualmente..." style="margin-top:0.3rem;">
+        <button class="btn btn-ghost btn-sm" id="clear-obs" style="margin-top:0.3rem;">✕ Borrar observación</button>
       </div>
       <div class="form-group">
         <label class="form-label">Comentario</label>
@@ -382,6 +383,10 @@ document.getElementById('save-addr').addEventListener('click', async () => {
   closeModals(); renderDoorList(); Utils.toast('Guardado', 'success');
 });
 
+document.getElementById('clear-obs').addEventListener('click', () => {
+  document.getElementById('edit-obs').value = '';
+  document.querySelectorAll('.obs-preset-btn').forEach(b => b.classList.remove('active'));
+});
 document.getElementById('clear-visit').addEventListener('click', () => { document.getElementById('edit-visit').value = ''; });
 
 function renderPhoneList() {
