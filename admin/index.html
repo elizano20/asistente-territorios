@@ -1139,30 +1139,134 @@ window.openAutoAssignAll = async function() {
   syncStates();
   const assignedDate = Utils.today();
   autoAllPlan = [];
-  let available = territories.filter(t => t.state === 'Disponible').map(t => t.id);
 
-  coordinators.forEach(c => {
+  // Sort territories sequentially
+  const sortedTerrs = [...territories].sort((a, b) =>
+    String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
+
+  // Get available territories
+  const available = territories
+    .filter(t => t.state === 'Disponible')
+    .sort((a, b) => String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
+
+  if (!available.length) {
+    Utils.toast('Sin territorios disponibles', 'info');
+    return;
+  }
+
+  // Build combined history for each coordinator from BOTH regular + campaign assignments
+  Utils.toast('Calculando rotación...', 'info');
+
+  const coordHistory = {};
+  for (const c of coordinators) {
+    if ((c.maxTerr ?? settings.maxTerr ?? 8) === 0) continue;
+
+    // Get regular assignment history
+    const regularHistory = await DB.getAssignments({ coordinatorId: c.id });
+    const regularTerrIds = regularHistory.map(a => a.territoryId);
+
+    // Get campaign assignment history
+    const campHistory = await DB.getCoordinatorCampaignHistory(c.id);
+    const campTerrIds = campHistory.map(a => a.territoryId);
+
+    // Combine both histories
+    const allWorked = [...new Set([...regularTerrIds, ...campTerrIds])];
+    coordHistory[c.id] = allWorked;
+  }
+
+  // For each coordinator find the highest sequential index they've worked
+  // Then assign the next available block after that point
+  const activeCoords = coordinators.filter(c => (c.maxTerr ?? settings.maxTerr ?? 8) > 0);
+
+  // Find next start index for each coordinator
+  const coordNextIdx = {};
+  activeCoords.forEach(c => {
+    const worked = coordHistory[c.id] || [];
+    if (!worked.length) {
+      coordNextIdx[c.id] = 0;
+    } else {
+      // Find the highest index territory they've worked
+      let maxIdx = -1;
+      worked.forEach(terrId => {
+        const idx = sortedTerrs.findIndex(t => t.id === terrId);
+        if (idx > maxIdx) maxIdx = idx;
+      });
+      // Next index wraps around if past the end (full rotation complete)
+      coordNextIdx[c.id] = maxIdx >= sortedTerrs.length - 1 ? 0 : maxIdx + 1;
+    }
+  });
+
+  // Sort coordinators by their next start index so assignments flow sequentially
+  activeCoords.sort((a, b) => coordNextIdx[a.id] - coordNextIdx[b.id]);
+
+  // Assign sequential blocks from available territories
+  // We use a rotating pointer starting from each coordinator's next index
+  let usedTerrIds = new Set();
+
+  activeCoords.forEach(c => {
     const max = coordMax(c.id);
-    if (max === 0) return;
     const cnt = assignedCount(c.id);
     const canAdd = max - cnt;
     if (canAdd <= 0) return;
-    const picked = available.slice(0, canAdd);
-    if (!picked.length) return;
-    available = available.filter(id => !picked.includes(id));
+
+    const startIdx = coordNextIdx[c.id];
+    const block = [];
+
+    // Try to pick consecutive available territories starting from startIdx
+    // First pass: from startIdx to end
+    for (let i = startIdx; i < sortedTerrs.length && block.length < canAdd; i++) {
+      const t = sortedTerrs[i];
+      if (t.state === 'Disponible' && !usedTerrIds.has(t.id)) {
+        block.push(t.id);
+        usedTerrIds.add(t.id);
+      }
+    }
+
+    // Second pass: wrap around from beginning if needed
+    if (block.length < canAdd && startIdx > 0) {
+      for (let i = 0; i < startIdx && block.length < canAdd; i++) {
+        const t = sortedTerrs[i];
+        if (t.state === 'Disponible' && !usedTerrIds.has(t.id)) {
+          block.push(t.id);
+          usedTerrIds.add(t.id);
+        }
+      }
+    }
+
+    if (!block.length) return;
+
     const expDate = Utils.addDays(assignedDate, settings.maxDays || 120);
-    autoAllPlan.push({ coordinatorId: c.id, terrIds: picked, assignedDate, expDate });
+    const workedCount = (coordHistory[c.id] || []).length;
+    const isNewRotation = workedCount > 0 && coordNextIdx[c.id] === 0;
+
+    autoAllPlan.push({
+      coordinatorId: c.id,
+      terrIds: block,
+      assignedDate,
+      expDate,
+      startNumber: territories.find(t => t.id === block[0])?.number,
+      endNumber: territories.find(t => t.id === block[block.length-1])?.number,
+      workedBefore: workedCount,
+      isNewRotation
+    });
   });
 
-  if (!autoAllPlan.length) { Utils.toast('Sin territorios disponibles o todos en su límite', 'info'); return; }
+  if (!autoAllPlan.length) {
+    Utils.toast('Sin territorios disponibles o todos en su límite', 'info');
+    return;
+  }
 
   document.getElementById('auto-all-preview').innerHTML = autoAllPlan.map(plan => `
     <div style="padding:0.8rem 0;border-bottom:1px solid var(--border)">
-      <div style="font-weight:700;margin-bottom:0.4rem">${coordName(plan.coordinatorId)}</div>
+      <div style="font-weight:700;margin-bottom:0.4rem;display:flex;align-items:center;gap:0.5rem;">
+        ${coordName(plan.coordinatorId)}
+        ${plan.isNewRotation ? '<span class="badge badge-yellow">🔄 Nueva rotación</span>' : ''}
+        ${plan.workedBefore === 0 ? '<span class="badge badge-green">Primera vez</span>' : ''}
+      </div>
       <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.3rem">
         ${plan.terrIds.map(id => `<span class="badge badge-blue">${territories.find(t=>t.id===id)?.number}</span>`).join('')}
       </div>
-      <div class="text-muted text-sm">${plan.terrIds.length} territorio(s) · Expira ${Utils.fmtDate(plan.expDate)}</div>
+      <div class="text-muted text-sm">${plan.terrIds.length} territorio(s) · ${plan.startNumber} → ${plan.endNumber} · Expira ${Utils.fmtDate(plan.expDate)}</div>
     </div>`).join('');
 
   document.getElementById('modal-auto-all').classList.add('open');
@@ -1603,66 +1707,77 @@ window.deleteCampaignConfirm = async function(id) {
 window.openAutoAssignCampaign = async function() {
   if (!activeCampaign) return;
 
-  // Get campaign history for rotation
-  const historyByCoord = {};
-  for (const c of coordinators) {
-    const hist = await DB.getCoordinatorCampaignHistory(c.id);
-    historyByCoord[c.id] = hist.map(h => h.territoryId);
-  }
-
   // Sort territories sequentially
   const sortedTerrs = [...territories].sort((a, b) =>
     String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
 
-  // Active coordinators sorted by least recently worked territory
+  // Get combined history (regular + campaign) for each coordinator
+  const historyByCoord = {};
+  for (const c of coordinators) {
+    const regular = await DB.getAssignments({ coordinatorId: c.id });
+    const campaign = await DB.getCoordinatorCampaignHistory(c.id);
+    const allWorked = [...new Set([...regular.map(a => a.territoryId), ...campaign.map(a => a.territoryId)])];
+    historyByCoord[c.id] = allWorked;
+  }
+
   const activeCoords = coordinators.filter(c => (c.maxTerr ?? settings.maxTerr ?? 8) > 0);
 
-  // Determine starting territory for each coordinator based on history
-  // Find the highest territory index each coordinator worked previously
-  const coordStartIndex = {};
+  // Find next start index for each coordinator
+  const coordNextIdx = {};
   activeCoords.forEach(c => {
     const worked = historyByCoord[c.id] || [];
     if (!worked.length) {
-      coordStartIndex[c.id] = 0;
+      coordNextIdx[c.id] = 0;
     } else {
-      // Find the last territory index they worked
       let maxIdx = -1;
       worked.forEach(terrId => {
         const idx = sortedTerrs.findIndex(t => t.id === terrId);
         if (idx > maxIdx) maxIdx = idx;
       });
-      coordStartIndex[c.id] = (maxIdx + 1) % sortedTerrs.length;
+      coordNextIdx[c.id] = maxIdx >= sortedTerrs.length - 1 ? 0 : maxIdx + 1;
     }
   });
 
-  // Sort coordinators by their start index to assign sequential blocks
-  activeCoords.sort((a, b) => coordStartIndex[a.id] - coordStartIndex[b.id]);
+  // Sort coordinators by next start index
+  activeCoords.sort((a, b) => coordNextIdx[a.id] - coordNextIdx[b.id]);
 
-  // Assign sequential blocks
   campaignAutoAssignPlan = [];
-  let terrIdx = 0;
-  const terrCount = sortedTerrs.length;
+  let usedTerrIds = new Set();
 
   activeCoords.forEach(c => {
-    const max = c.maxTerr ?? settings.maxTerr ?? 8;
+    const max = coordMax(c.id);
+    if (max === 0) return;
+    const startIdx = coordNextIdx[c.id];
     const block = [];
-    for (let i = 0; i < max && terrIdx < terrCount; i++) {
-      block.push(sortedTerrs[terrIdx % terrCount]);
-      terrIdx++;
+
+    for (let i = startIdx; i < sortedTerrs.length && block.length < max; i++) {
+      if (!usedTerrIds.has(sortedTerrs[i].id)) {
+        block.push(sortedTerrs[i]);
+        usedTerrIds.add(sortedTerrs[i].id);
+      }
     }
-    if (block.length > 0) {
-      campaignAutoAssignPlan.push({ coordinatorId: c.id, territories: block });
+    if (block.length < max && startIdx > 0) {
+      for (let i = 0; i < startIdx && block.length < max; i++) {
+        if (!usedTerrIds.has(sortedTerrs[i].id)) {
+          block.push(sortedTerrs[i]);
+          usedTerrIds.add(sortedTerrs[i].id);
+        }
+      }
     }
+
+    if (!block.length) return;
+    const isRotated = coordNextIdx[c.id] > 0;
+    campaignAutoAssignPlan.push({ coordinatorId: c.id, territories: block, isRotated });
   });
 
-  // Show preview
+  if (!campaignAutoAssignPlan.length) { Utils.toast('Sin territorios disponibles', 'info'); return; }
+
   document.getElementById('campaign-assign-preview').innerHTML = campaignAutoAssignPlan.map(plan => {
     const coord = coordinators.find(c => c.id === plan.coordinatorId);
-    const isRotated = (coordStartIndex[plan.coordinatorId] || 0) > 0;
-    return `<div style="padding:0.8rem 0;border-bottom:1px solid var(--border);">
+    return `<div style="padding:0.8rem 0;border-bottom:1px solid var(--border)">
       <div style="font-weight:700;margin-bottom:0.4rem;display:flex;align-items:center;gap:0.5rem;">
         ${coord?.name}
-        ${isRotated ? '<span class="badge badge-blue">🔄 Rotado</span>' : '<span class="badge badge-gray">Inicio</span>'}
+        ${plan.isRotated ? '<span class="badge badge-blue">🔄 Rotado</span>' : '<span class="badge badge-gray">Inicio</span>'}
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.3rem;">
         ${plan.territories.map(t => `<span class="badge badge-blue">${t.number}</span>`).join('')}
