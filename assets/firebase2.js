@@ -412,22 +412,43 @@ const Utils = {
           const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
           const addresses = [];
           let headerFound = false;
+
+          // Keywords that indicate header/metadata rows to skip
+          const skipKeywords = [
+            'registro de casa', 'calles', 'encargado', 'actualizacion',
+            'actualización', 'territorio', 'expira', 'en vivo', 'publicador',
+            'territorio personal', 'fecha de', 'observaci', 'comentario'
+          ];
+
           for (const line of lines) {
             const cols = line.split('\t');
+            const firstCol = (cols[0] || '').trim().toLowerCase();
+
+            // Stop at end marker
+            if (line.includes('***') || line.includes('Notas Completas') || line.includes('Fin de')) break;
+
             if (!headerFound) {
-              if (cols[0]?.toLowerCase().includes('direcci')) { headerFound = true; }
+              // Found the column headers row — next rows are addresses
+              if (firstCol.includes('direcci') || firstCol === 'dirección' || firstCol === 'direccion') {
+                headerFound = true;
+              }
               continue;
             }
-            if (line.includes('***') || line.includes('Notas')) break;
-            if (cols[0]) {
-              addresses.push({
-                address: cols[0]?.trim() || '',
-                street: cols[1]?.trim() || '',
-                observation: cols[2]?.trim() || '',
-                comment: cols[3]?.trim() || '',
-                visitDate: cols[4] ? Utils.excelDateToString(parseFloat(cols[4])) : ''
-              });
-            }
+
+            // Skip rows that look like metadata/headers accidentally included
+            if (skipKeywords.some(kw => firstCol.includes(kw))) continue;
+
+            // Skip empty first column
+            if (!cols[0]?.trim()) continue;
+
+            // Valid address row — first column should be a number or address
+            addresses.push({
+              address: cols[0]?.trim() || '',
+              street: cols[1]?.trim() || '',
+              observation: cols[2]?.trim() || '',
+              comment: cols[3]?.trim() || '',
+              visitDate: cols[4] ? Utils.excelDateToString(parseFloat(cols[4])) : ''
+            });
           }
           resolve(addresses);
         } catch (err) { reject(err); }

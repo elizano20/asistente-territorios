@@ -1,1905 +1,705 @@
 <!DOCTYPE html>
+<!-- v3.5 - insert address between rows + fix header parsing -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin — Asistente de Territorios</title>
+<title>Coordinador — TerriOS</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/app.css">
+<style>
+  .terr-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
+  .terr-card-map{width:100%;height:180px;object-fit:contain;display:block;background:#f3f4f8;}
+  .terr-card-body{padding:1rem 1.2rem;}
+  .terr-card-num{font-family:var(--font-head);font-weight:800;font-size:1.4rem;}
+  .terr-card-streets{color:var(--muted);font-size:0.82rem;margin-top:0.2rem;}
+  .terr-card-footer{padding:0.7rem 1.2rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;flex-wrap:wrap;}
+  .detail-map{width:100%;display:block;object-fit:contain;background:#f3f4f8;}
+  .detail-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
+  .detail-header-body{padding:1.2rem;}
+  .detail-title{font-family:var(--font-head);font-weight:800;font-size:1.6rem;}
+  .detail-streets{color:var(--muted);font-size:0.85rem;margin-top:0.2rem;}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin:1rem 0;}
+  .info-box{background:var(--surface2);border-radius:8px;padding:0.7rem 0.9rem;}
+  .info-box-label{font-family:var(--font-mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
+  .info-box-value{font-weight:600;font-size:0.9rem;margin-top:0.2rem;}
+  .start-box{background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:8px;padding:0.7rem 0.9rem;font-size:0.85rem;margin-bottom:0.8rem;}
+  .nav-btn-full{display:block;width:100%;padding:0.85rem;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-family:var(--font-head);font-weight:700;font-size:1rem;text-align:center;cursor:pointer;text-decoration:none;margin-bottom:0.5rem;}
+  .nav-btn-full:hover{background:#3a7de8;color:#fff;text-decoration:none;}
+  .addr-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
+  .addr-section-header{padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .addr-section-title{font-family:var(--font-head);font-weight:700;font-size:0.95rem;}
+  .addr-row{display:flex;align-items:center;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.5rem;flex-wrap:wrap;}
+  .addr-row:last-child{border-bottom:none;}
+  .addr-row.visited{background:rgba(54,211,153,0.04);}
+  .addr-num{font-weight:700;font-size:0.9rem;min-width:70px;}
+  .addr-street{color:var(--muted);font-size:0.82rem;min-width:90px;}
+  .addr-obs{flex:1;font-size:0.82rem;}
+  .obs-tag{display:inline-block;padding:0.15rem 0.6rem;border-radius:4px;font-size:0.72rem;background:rgba(245,197,24,0.12);color:var(--yellow);font-family:var(--font-mono);}
+  .addr-date{font-size:0.78rem;color:var(--muted);}
+  .edit-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;cursor:pointer;color:var(--text);}
+  .edit-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .phone-row{display:flex;align-items:flex-start;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.5rem;flex-wrap:wrap;}
+  .phone-row:last-child{border-bottom:none;}
+  .preset-btn{display:block;width:100%;text-align:left;padding:0.7rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:0.88rem;margin-bottom:0.4rem;transition:all .15s;}
+  .preset-btn:hover,.preset-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1rem;}
+  .tab-btn{padding:0.7rem 1.2rem;font-family:var(--font-mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+  .page{padding:1rem;max-width:900px;margin:0 auto;}
+  .sticky-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--border);padding:0.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;}
+</style>
 </head>
 <body>
-
-<div id="loading-screen" class="loading-screen">
-  <div class="spinner"></div>
-  <span data-i18n="loading">Cargando...</span>
-</div>
+<div id="loading-screen" class="loading-screen"><div class="spinner"></div><span>Cargando...</span></div>
 
 <div id="app" style="display:none">
-  <!-- Mobile topbar -->
-  <div class="topbar">
-    <button class="hamburger" onclick="toggleSidebar()">☰</button>
-    <span class="topbar-logo">Terri<span>·</span>OS</span>
-    <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
-  </div>
-  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-  <div class="app-layout">
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-logo">
-        <div class="app-name">Terri<span>·</span>OS</div>
-        <div class="app-role">Admin</div>
+  <div id="view-dashboard">
+    <div class="sticky-bar">
+      <span style="font-family:var(--font-head);font-weight:800;">Terri<span style="color:var(--accent)">·</span>OS</span>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <span id="dash-user-name" style="font-size:0.82rem;color:var(--muted);"></span>
+        <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
+        <button class="btn btn-ghost btn-sm" id="btn-logout">Salir</button>
       </div>
-      <nav class="sidebar-nav">
-        <a class="nav-item active" href="#" onclick="showSection('dashboard')"><span class="icon">📊</span><span data-i18n="navHome">Inicio</span></a>
-        <a class="nav-item" href="#" onclick="showSection('territories')"><span class="icon">🗺️</span><span data-i18n="navTerritories">Territorios</span></a>
-        <a class="nav-item" href="#" onclick="showSection('assignments')"><span class="icon">📋</span><span data-i18n="navAssignments">Asignaciones</span></a>
-        <a class="nav-item" href="#" onclick="showSection('coordinators')"><span class="icon">👥</span><span data-i18n="navCoordinators">Coordinadores</span></a>
-        <a class="nav-item" href="#" onclick="showSection('coverage')"><span class="icon">🗂️</span><span data-i18n="navCoverage">Cobertura</span></a>
-        <a class="nav-item" href="#" onclick="showSection('history')"><span class="icon">📚</span><span data-i18n="navHistory">Historial</span></a>
-        <a class="nav-item" href="#" onclick="showSection('campaigns')"><span class="icon">🏳️</span><span>Campañas</span></a>
-        <a class="nav-item" href="#" onclick="showSection('settings')"><span class="icon">⚙️</span><span data-i18n="navSettings">Configuración</span></a>
-      </nav>
-      <div class="sidebar-bottom">
-        <div class="sidebar-user">
-          <strong id="user-name">—</strong>
-          <span id="user-email" style="font-size:0.75rem"></span>
+    </div>
+    <div class="page">
+      <div id="dash-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem;margin-bottom:1.5rem;"></div>
+      <div id="expired-banner" style="display:none;background:var(--red-light);border:1px solid #fecdca;border-radius:var(--radius);padding:0.8rem 1rem;color:var(--red);font-size:0.85rem;margin-bottom:1rem;">
+        ⚠️ Tienes territorios vencidos. Por favor devuélvelos lo antes posible.
+      </div>
+
+      <!-- Active Campaign Banner -->
+      <div id="campaign-banner" style="display:none;background:var(--accent-light);border:1px solid #c7d7fd;border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.5rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+          <div>
+            <div style="font-weight:700;color:var(--accent);font-family:var(--font-head);">🏳️ <span id="camp-banner-name"></span></div>
+            <div class="text-sm text-muted" id="camp-banner-dates"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-view-campaign">Ver Campaña →</button>
         </div>
-        <div style="display:flex;gap:0.5rem;align-items:center;">
-          <button class="btn btn-ghost btn-sm" onclick="Auth.logout()" style="flex:1" data-i18n="logout">Salir</button>
-          <button class="lang-toggle" id="lang-toggle-sidebar" onclick="Lang.toggle()">EN</button>
+        <!-- My progress -->
+        <div style="margin-top:0.8rem;">
+          <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:0.3rem;">
+            <span id="camp-my-progress">0 / 0 completados</span>
+            <span id="camp-my-pct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="camp-my-bar" style="width:0%"></div></div>
         </div>
       </div>
-    </aside>
 
-    <!-- Main -->
-    <main class="main-content">
-
-      <!-- ── DASHBOARD ── -->
-      <section id="sec-dashboard">
-        <div class="page-header">
-          <h2 data-i18n="dashWelcome">Panel General</h2>
-          <button class="btn btn-primary" onclick="openAssignModal()" data-i18n="assignTerritory">Asignar Territorio</button>
-        </div>
-        <div class="page-body">
-          <div class="stats-grid" id="dash-stats"></div>
-          <div class="grid-2">
-            <div class="table-wrap">
-              <div class="card-header"><span class="card-title" data-i18n="dashActivePublishers">Coordinadores Activos</span></div>
-              <div class="table-responsive"><table><thead><tr><th data-i18n="coordinator">Coordinador</th><th data-i18n="dashAssigned">Asignados</th><th>Próx. Vence</th></tr></thead><tbody id="dash-coordinators"></tbody></table></div>
-            </div>
-            <div class="table-wrap">
-              <div class="card-header"><span class="card-title" data-i18n="dashExpiringSOon">Por Vencer (30 días)</span></div>
-              <div class="table-responsive"><table><thead><tr><th data-i18n="territory">Territorio</th><th data-i18n="coordinator">Coordinador</th><th data-i18n="expiresDate">Expira</th></tr></thead><tbody id="dash-expiring"></tbody></table></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── TERRITORIES ── -->
-      <section id="sec-territories" style="display:none">
-        <div class="page-header">
-          <h2 data-i18n="territories">Territorios</h2>
-          <button class="btn btn-primary" onclick="openTerritoryModal()" data-i18n="createTerritory">Crear Territorio</button>
-        </div>
-        <div class="page-body">
-          <div class="table-toolbar">
-            <div class="search-wrap">
-              <span class="search-icon">🔍</span>
-              <input type="text" class="form-control" id="terr-search" data-i18n-ph="search" oninput="filterTerritories()" style="width:220px">
-            </div>
-            <select class="form-control" id="terr-status-filter" onchange="filterTerritories()" style="width:150px">
-              <option value="">Todos</option>
-              <option value="Disponible" data-i18n="statusAvailable">Disponible</option>
-              <option value="Asignado" data-i18n="statusAssigned">Asignado</option>
-              <option value="Vencido" data-i18n="statusExpired">Vencido</option>
-              <option value="Devuelto" data-i18n="statusReturned">Devuelto</option>
-            </select>
-          </div>
-          <div class="territory-grid" id="territory-grid"></div>
-        </div>
-      </section>
-
-      <!-- ── ASSIGNMENTS ── -->
-      <section id="sec-assignments" style="display:none">
-        <div class="page-header">
-          <h2 data-i18n="navAssignments">Asignaciones</h2>
-          <div class="flex gap-1">
-            <button class="btn btn-secondary" onclick="openAutoAssignAll()" data-i18n="autoAssignAll">⚡ Auto Asignar Todos</button>
-            <button class="btn btn-primary" onclick="openAssignModal()" data-i18n="assignTerritory">+ Asignar</button>
-          </div>
-        </div>
-        <div class="page-body">
-          <div class="table-wrap">
-            <div class="table-toolbar">
-              <div class="search-wrap">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="form-control" id="assign-search" data-i18n-ph="search" oninput="filterAssignments()" style="width:220px">
-              </div>
-              <select class="form-control" id="assign-coord-filter" onchange="filterAssignments()" style="width:180px">
-                <option value="" data-i18n="coordinators">Todos los Coordinadores</option>
-              </select>
-            </div>
-            <div class="table-responsive">
-              <table>
-                <thead><tr>
-                  <th data-i18n="territory">Territorio</th>
-                  <th data-i18n="coordinator">Coordinador</th>
-                  <th data-i18n="assignedDate">Asignado</th>
-                  <th data-i18n="expiresDate">Expira</th>
-                  <th data-i18n="returnedDate">Devuelto</th>
-                  <th data-i18n="actions">Estado</th>
-                  <th></th>
-                </tr></thead>
-                <tbody id="assign-table"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── COORDINATORS ── -->
-      <section id="sec-coordinators" style="display:none">
-        <div class="page-header">
-          <h2 data-i18n="coordinators">Coordinadores</h2>
-          <button class="btn btn-primary" onclick="openCoordinatorModal()" data-i18n="addCoordinator">+ Agregar</button>
-        </div>
-        <div class="page-body">
-          <div class="table-wrap">
-            <div class="table-responsive">
-              <table>
-                <thead><tr>
-                  <th data-i18n="coordinatorName">Nombre</th>
-                  <th data-i18n="email">Correo</th>
-                  <th data-i18n="dashAssigned">Asignados</th>
-                  <th>Máx.</th>
-                  <th>Estado</th>
-                  <th></th>
-                </tr></thead>
-                <tbody id="coord-table"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── COVERAGE ── -->
-      <section id="sec-coverage" style="display:none">
-        <div class="page-header">
-          <h2 data-i18n="coverageTitle">Mapa de Cobertura</h2>
-        </div>
-        <div class="page-body">
-          <div class="flex gap-2 mb-3" style="flex-wrap:wrap;align-items:center">
-            <div class="flex gap-1 items-center"><span class="badge badge-blue">■</span><span class="text-sm" data-i18n="statusAssigned">Asignado</span></div>
-            <div class="flex gap-1 items-center"><span class="badge badge-red">■</span><span class="text-sm" data-i18n="statusExpired">Vencido</span></div>
-            <div class="flex gap-1 items-center"><span class="badge badge-green">■</span><span class="text-sm" data-i18n="statusReturned">Devuelto</span></div>
-            <div class="flex gap-1 items-center"><span class="badge badge-gray">■</span><span class="text-sm" data-i18n="statusAvailable">Disponible</span></div>
-          </div>
-          <div class="coverage-grid" id="coverage-grid"></div>
-        </div>
-      </section>
-
-      <!-- ── HISTORY ── -->
-      <section id="sec-history" style="display:none">
-        <div class="page-header">
-          <h2 data-i18n="navHistory">Historial</h2>
-          <button class="btn btn-secondary" onclick="openAddHistModal()" data-i18n="addRecord">+ Agregar Registro</button>
-        </div>
-        <div class="page-body">
-          <div class="table-wrap">
-            <div class="table-toolbar">
-              <div class="search-wrap">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="form-control" id="hist-search" data-i18n-ph="search" oninput="filterHistory()" style="width:220px">
-              </div>
-              <select class="form-control" id="hist-coord-filter" onchange="filterHistory()" style="width:180px">
-                <option value="">Todos</option>
-              </select>
-            </div>
-            <div class="table-responsive">
-              <table>
-                <thead><tr>
-                  <th data-i18n="territory">Territorio</th>
-                  <th data-i18n="coordinator">Coordinador</th>
-                  <th data-i18n="assignedDate">Asignado</th>
-                  <th data-i18n="expiresDate">Expira</th>
-                  <th data-i18n="returnedDate">Devuelto</th>
-                  <th>Estado</th>
-                </tr></thead>
-                <tbody id="hist-table"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── CAMPAIGNS ── -->
-      <section id="sec-campaigns" style="display:none">
-        <div class="page-header">
-          <h2>🏳️ Campañas</h2>
-          <button class="btn btn-primary" onclick="openCampaignModal()">+ Nueva Campaña</button>
-        </div>
-        <div class="page-body">
-
-          <!-- Active campaign banner -->
-          <div id="active-campaign-banner" style="display:none;background:var(--accent-light);border:1px solid #c7d7fd;border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1.5rem;">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
-              <div>
-                <div style="font-weight:700;color:var(--accent);" id="active-campaign-name"></div>
-                <div class="text-sm text-muted" id="active-campaign-dates"></div>
-              </div>
-              <div style="display:flex;gap:0.5rem;">
-                <button class="btn btn-primary btn-sm" onclick="openAutoAssignCampaign()">⚡ Auto Asignar</button>
-                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('campaign-coverage-wrap').scrollIntoView({behavior:'smooth'})">📊 Ver Cobertura</button>
-                <button class="btn btn-danger btn-sm" onclick="closeCampaign()">Cerrar Campaña</button>
-              </div>
-            </div>
-            <!-- Progress bar -->
-            <div style="margin-top:0.8rem;">
-              <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:0.3rem;">
-                <span id="campaign-progress-text">0 / 88 territorios completados</span>
-                <span id="campaign-progress-pct">0%</span>
-              </div>
-              <div class="progress-bar"><div class="progress-fill" id="campaign-progress-bar" style="width:0%"></div></div>
-            </div>
-          </div>
-
-          <!-- Campaign coverage grid -->
-          <div id="campaign-coverage-wrap" style="display:none;margin-bottom:1.5rem;">
-            <div class="card">
-              <div class="card-header">
-                <span class="card-title">Cobertura de Campaña</span>
-                <div style="display:flex;gap:0.5rem;align-items:center;">
-                  <span style="font-size:0.75rem;color:var(--muted);">🟢 Completado &nbsp; ⬜ Pendiente</span>
-                  <button class="btn btn-secondary btn-sm" onclick="sendDailyReport()">📧 Enviar Reporte</button>
-                </div>
-              </div>
-              <div class="card-body">
-                <div id="campaign-coverage-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:0.5rem;"></div>
-              </div>
-            </div>
-
-            <!-- Per-coordinator breakdown -->
-            <div class="card" style="margin-top:1rem;">
-              <div class="card-header"><span class="card-title">Por Coordinador</span></div>
-              <div class="table-responsive">
-                <table>
-                  <thead><tr><th>Coordinador</th><th>Asignados</th><th>Completados</th><th>Progreso</th></tr></thead>
-                  <tbody id="campaign-coord-breakdown"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Campaign list -->
-          <div class="table-wrap">
-            <div class="table-toolbar"><span style="font-weight:600;">Todas las Campañas</span></div>
-            <div class="table-responsive">
-              <table>
-                <thead><tr><th>Nombre</th><th>Descripción</th><th>Inicio</th><th>Fin</th><th>Estado</th><th></th></tr></thead>
-                <tbody id="campaigns-table"></tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- ── SETTINGS ── -->
-      <section id="sec-settings" style="display:none">
-        <div class="page-header"><h2 data-i18n="settings">Configuración</h2></div>
-        <div class="page-body">
-          <div class="grid-2">
-            <!-- Assignment rules -->
-            <div class="card">
-              <div class="card-header"><span class="card-title" data-i18n="settingsAssignment">Reglas de Asignación</span></div>
-              <div class="card-body">
-                <div class="form-group">
-                  <label class="form-label" data-i18n="maxTerritories">Máx. territorios por coordinador</label>
-                  <input type="number" class="form-control" id="set-max-terr" min="0" max="30" value="8">
-                </div>
-                <div class="form-group">
-                  <label class="form-label" data-i18n="maxDays">Días máximos de asignación</label>
-                  <input type="number" class="form-control" id="set-max-days" min="30" value="120">
-                </div>
-                <div class="form-group">
-                  <label class="form-label" data-i18n="consecutiveAuto">Auto-selección consecutiva</label>
-                  <select class="form-control" id="set-consecutive">
-                    <option value="1" data-i18n="consecutiveYes">Sí — consecutivos primero</option>
-                    <option value="0" data-i18n="consecutiveNo">No — cualquier disponible</option>
-                  </select>
-                </div>
-                <button class="btn btn-primary w-full" onclick="saveGeneralSettings()" data-i18n="save">Guardar</button>
-              </div>
-            </div>
-
-            <!-- Door statuses -->
-            <div class="card">
-              <div class="card-header">
-                <span class="card-title" data-i18n="doorToDoorStatuses">Estados — Casa en Casa</span>
-                <button class="btn btn-primary btn-sm" onclick="addDoorStatus()" data-i18n="addStatus">+ Agregar</button>
-              </div>
-              <div class="card-body" id="door-statuses-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
-            </div>
-
-            <!-- Phone statuses -->
-            <div class="card">
-              <div class="card-header">
-                <span class="card-title" data-i18n="phoneStatuses">Estados — Telefónico</span>
-                <button class="btn btn-primary btn-sm" onclick="addPhoneStatus()" data-i18n="addStatus">+ Agregar</button>
-              </div>
-              <div class="card-body" id="phone-statuses-list" style="display:flex;flex-direction:column;gap:0.5rem;"></div>
-            </div>
-
-            <!-- Data -->
-            <div class="card">
-              <div class="card-header"><span class="card-title" data-i18n="settingsData">Datos</span></div>
-              <div class="card-body" style="display:flex;flex-direction:column;gap:0.7rem;">
-                <p class="text-muted text-sm">Exporta todos los datos de la aplicación en formato JSON.</p>
-                <button class="btn btn-secondary w-full" onclick="exportAllData()">⬇️ Exportar JSON</button>
-                <button class="btn btn-secondary w-full" onclick="document.getElementById('import-file').click()">⬆️ Importar JSON</button>
-                <input type="file" id="import-file" accept=".json" style="display:none" onchange="importAllData(event)">
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-    </main>
+      <h3 style="font-family:var(--font-head);margin-bottom:1rem;">Mis Territorios</h3>
+      <div id="my-terr-list"></div>
+    </div>
   </div>
+
+  <!-- Campaign View -->
+  <div id="view-campaign" style="display:none">
+    <div class="sticky-bar">
+      <button class="btn btn-ghost btn-sm" id="btn-back-campaign">← Regresar</button>
+      <span style="font-weight:600;font-family:var(--font-head);color:var(--accent);" id="camp-view-title">Campaña</span>
+    </div>
+    <div class="page">
+      <div id="camp-terr-list"></div>
+    </div>
+  </div>
+
+  <div id="view-detail" style="display:none">
+    <div class="sticky-bar">
+      <button class="btn btn-ghost btn-sm" id="btn-back">← Regresar</button>
+      <div style="display:flex;gap:0.5rem;">
+        <a id="detail-nav-btn" href="#" target="_blank" class="btn btn-secondary btn-sm" style="display:none">🧭 Navegar</a>
+        <button class="btn btn-secondary btn-sm" id="btn-share">🔗 Publicadores</button>
+      </div>
+    </div>
+    <div class="page">
+      <div class="detail-header">
+        <img id="detail-map-img" class="detail-map" style="display:none" alt="Mapa">
+        <div class="detail-header-body">
+          <div class="detail-title" id="detail-title">—</div>
+          <div class="detail-streets" id="detail-streets">—</div>
+          <div class="info-grid" id="detail-info"></div>
+          <div class="start-box" id="detail-start" style="display:none">
+            ⭐ <strong style="color:var(--accent)">Punto de inicio:</strong> <span id="detail-start-text"></span>
+          </div>
+          <a id="detail-nav-full" href="#" target="_blank" class="nav-btn-full" style="display:none">🧭 Abrir en Google Maps</a>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="door">🚪 Casa en Casa</button>
+        <button class="tab-btn" data-tab="phone">📞 Telefónico</button>
+      </div>
+
+      <div class="tab-pane active" id="tab-door">
+        <div class="addr-section">
+          <div class="addr-section-header">
+            <span class="addr-section-title">Registro de Casa en Casa</span>
+            <span class="text-muted text-sm" id="door-count"></span>
+          </div>
+          <div id="door-list"></div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-phone">
+        <div class="addr-section">
+          <div class="addr-section-header">
+            <span class="addr-section-title">Territorio Telefónico</span>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <span class="text-muted text-sm" id="phone-count"></span>
+              <button class="btn btn-primary btn-sm" id="btn-add-phone">+ Agregar</button>
+            </div>
+          </div>
+          <div id="phone-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<!-- ── MODALS ── -->
-
-<!-- Territory Modal -->
-<div class="modal-overlay" id="modal-territory">
-  <div class="modal modal-lg">
+<!-- Edit Address Modal -->
+<div class="modal-overlay" id="modal-addr">
+  <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" id="terr-modal-title" data-i18n="createTerritory">Crear Territorio</span>
-      <button class="modal-close" onclick="closeModal('modal-territory')">✕</button>
+      <span class="modal-title" id="addr-modal-title">Editar Dirección</span>
+      <button class="modal-close" id="cls-addr">✕</button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="terr-id">
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label" data-i18n="territoryNumber">Número</label>
-          <input type="text" class="form-control" id="terr-number" placeholder="Ej: 75, 1A, 1B">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="territoryStreets">Calles (límites)</label>
-          <input type="text" class="form-control" id="terr-streets" placeholder="Mayflower/Heliotrope entre 58th/Slauson">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="territoryStartPoint">Punto de Inicio</label>
-          <input type="text" class="form-control" id="terr-startpoint" placeholder="Ej: Esquina NW de 58th y Mayflower">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="territoryMapLink">Enlace Google Maps</label>
-          <input type="url" class="form-control" id="terr-maplink" placeholder="https://maps.google.com/...">
+      <input type="hidden" id="insert-after-idx" value="-1">
+      <div style="background:var(--surface2);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1rem;">
+        <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--muted);">DIRECCIÓN</div>
+        <div id="edit-addr-label" style="font-weight:700;margin-top:0.2rem;"></div>
+      </div>
+      <!-- Insert new address fields (hidden when editing) -->
+      <div id="insert-addr-fields" style="display:none;">
+        <div class="form-grid-2" style="margin-bottom:0.5rem;">
+          <div class="form-group">
+            <label class="form-label">Dirección</label>
+            <input type="text" class="form-control" id="insert-addr" placeholder="Ej: 4700 1/2, 4701 #2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Calle</label>
+            <input type="text" class="form-control" id="insert-street" placeholder="Ej: 58th St">
+          </div>
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label" data-i18n="territoryNotes">Notas</label>
-        <textarea class="form-control" id="terr-notes" rows="2"></textarea>
+        <label class="form-label">Observación</label>
+        <div id="obs-btns"></div>
+        <input type="text" class="form-control" id="edit-obs" placeholder="O escribe manualmente..." style="margin-top:0.3rem;">
+        <button class="btn btn-ghost btn-sm" id="clear-obs" style="margin-top:0.3rem;">✕ Borrar observación</button>
       </div>
-      <!-- Map image upload -->
       <div class="form-group">
-        <label class="form-label" data-i18n="territoryMapImage">Imagen del Mapa</label>
-        <div id="map-preview" style="display:none;margin-bottom:0.7rem;">
-          <img id="map-preview-img" style="height:140px;border-radius:8px;border:1px solid var(--border);object-fit:cover;max-width:100%;">
-          <button type="button" class="btn btn-danger btn-sm mt-1" onclick="removeMapImage()">✕ Quitar imagen</button>
-        </div>
-        <div class="file-upload" onclick="document.getElementById('map-file').click()">
-          <input type="file" id="map-file" accept="image/*" onchange="previewMap(event)">
-          <div class="upload-icon">🗺️</div>
-          <p data-i18n="uploadMapImage">Subir imagen del mapa</p>
-          <p class="text-xs text-muted mt-1">PNG, JPG hasta 5MB</p>
-        </div>
+        <label class="form-label">Comentario</label>
+        <textarea class="form-control" id="edit-comment" rows="2"></textarea>
       </div>
-      <!-- Address upload -->
       <div class="form-group">
-        <label class="form-label" data-i18n="uploadAddresses">Lista de Direcciones (xlsx exportado como texto)</label>
-        <div class="file-upload" onclick="document.getElementById('addr-file').click()">
-          <input type="file" id="addr-file" accept=".txt,.csv,.tsv" onchange="previewAddresses(event)">
-          <div class="upload-icon">📋</div>
-          <p data-i18n="uploadAddresses">Subir lista de direcciones</p>
-          <p class="text-xs text-muted mt-1">Archivo TSV exportado del Google Sheet</p>
-        </div>
-        <div id="addr-preview" style="display:none" class="mt-2">
-          <p class="text-sm text-muted" id="addr-preview-count"></p>
-        </div>
-      </div>
-      <!-- Phone upload -->
-      <div class="form-group">
-        <label class="form-label" data-i18n="uploadPhone">Lista Telefónica (opcional)</label>
-        <div class="file-upload" onclick="document.getElementById('phone-file').click()">
-          <input type="file" id="phone-file" accept=".txt,.csv,.tsv" onchange="previewPhone(event)">
-          <div class="upload-icon">📞</div>
-          <p data-i18n="uploadPhone">Subir lista telefónica</p>
-          <p class="text-xs text-muted mt-1">Archivo TSV exportado del Google Sheet</p>
-        </div>
-        <div id="phone-preview" style="display:none" class="mt-2">
-          <p class="text-sm text-muted" id="phone-preview-count"></p>
-        </div>
+        <label class="form-label">Fecha de Visita</label>
+        <input type="date" class="form-control" id="edit-visit">
+        <button class="btn btn-ghost btn-sm" id="clear-visit" style="margin-top:0.3rem;">✕ Borrar fecha</button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-territory')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveTerritory()" id="terr-save-btn" data-i18n="save">Guardar</button>
+      <button class="btn btn-secondary" id="cls-addr-2">Cancelar</button>
+      <button class="btn btn-green" id="save-addr">Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- Assign Modal -->
-<div class="modal-overlay" id="modal-assign">
-  <div class="modal modal-lg">
+<!-- Edit Phone Modal -->
+<div class="modal-overlay" id="modal-phone">
+  <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" data-i18n="assignTerritory">Asignar Territorio</span>
-      <button class="modal-close" onclick="closeModal('modal-assign')">✕</button>
+      <span class="modal-title" id="phone-modal-title">Agregar Registro</span>
+      <button class="modal-close" id="cls-phone">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" data-i18n="coordinator">Coordinador</label>
-        <select class="form-control" id="assign-coord" onchange="updateCoordInfo()"></select>
-        <div id="coord-limit-info" class="form-hint mt-1"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label" data-i18n="territory">Territorios Disponibles</label>
-        <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
-          <input type="text" class="form-control" id="terr-chip-filter" placeholder="Filtrar..." oninput="renderTerrChips()" style="flex:1">
-          <button class="btn btn-secondary btn-sm" onclick="autoSelectTerr()">✨ Auto</button>
-          <button class="btn btn-ghost btn-sm" onclick="selectedTerrs=[];renderTerrChips()">✕</button>
-        </div>
-        <div id="terr-chips" style="display:flex;flex-wrap:wrap;gap:0.4rem;max-height:180px;overflow-y:auto;padding:0.5rem 0;"></div>
-        <div id="selected-info" class="text-muted text-sm mt-1"></div>
-      </div>
       <div class="form-grid-2">
         <div class="form-group">
-          <label class="form-label" data-i18n="assignedDate">Fecha de Asignación</label>
-          <input type="date" class="form-control" id="assign-date">
+          <label class="form-label">Dirección</label>
+          <input type="text" class="form-control" id="edit-ph-addr">
         </div>
         <div class="form-group">
-          <label class="form-label" data-i18n="expiresDate">Fecha de Expiración</label>
-          <input type="date" class="form-control" id="assign-expires">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-control" id="edit-ph-name">
         </div>
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input type="tel" class="form-control" id="edit-ph-num">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha</label>
+          <input type="date" class="form-control" id="edit-ph-date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Resultado de Llamada</label>
+        <div id="phone-result-btns"></div>
+        <input type="text" class="form-control" id="edit-ph-result" placeholder="O escribe manualmente..." style="margin-top:0.3rem;">
+        <button class="btn btn-ghost btn-sm" id="clear-ph-result" style="margin-top:0.3rem;">✕ Borrar resultado</button>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-assign')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-green" onclick="doAssign()" data-i18n="confirm">Confirmar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Return Modal -->
-<div class="modal-overlay" id="modal-return">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" data-i18n="returnTerritory">Devolver Territorio</span>
-      <button class="modal-close" onclick="closeModal('modal-return')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" data-i18n="returnedDate">Fecha de Devolución</label>
-        <input type="date" class="form-control" id="return-date">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-return')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="doReturn()" data-i18n="confirm">Confirmar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Coordinator Modal -->
-<div class="modal-overlay" id="modal-coordinator">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" id="coord-modal-title" data-i18n="addCoordinator">Agregar Coordinador</span>
-      <button class="modal-close" onclick="closeModal('modal-coordinator')">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="coord-uid">
-      <div class="form-group">
-        <label class="form-label" data-i18n="coordinatorName">Nombre completo</label>
-        <input type="text" class="form-control" id="coord-name" placeholder="Apellido, Nombre">
-      </div>
-      <div class="form-group" id="coord-email-group">
-        <label class="form-label" data-i18n="coordinatorEmail">Correo electrónico</label>
-        <input type="email" class="form-control" id="coord-email">
-      </div>
-      <div class="form-group" id="coord-pass-group">
-        <label class="form-label" data-i18n="coordinatorPassword">Contraseña temporal</label>
-        <input type="password" class="form-control" id="coord-password" placeholder="Mínimo 6 caracteres">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Máx. Territorios</label>
-        <input type="number" class="form-control" id="coord-max" value="8" min="0" max="30">
-        <span class="form-hint">0 = inactivo</span>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-coordinator')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveCoordinator()" data-i18n="save">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Auto Assign All Modal -->
-<div class="modal-overlay" id="modal-auto-all">
-  <div class="modal modal-lg">
-    <div class="modal-header">
-      <span class="modal-title">⚡ <span data-i18n="autoAssignAll">Auto Asignar Todos</span></span>
-      <button class="modal-close" onclick="closeModal('modal-auto-all')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p class="text-muted text-sm mb-2">Se asignarán territorios disponibles a cada coordinador hasta su límite individual.</p>
-      <div id="auto-all-preview" style="max-height:340px;overflow-y:auto;"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-auto-all')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-green" onclick="doAutoAssignAll()" data-i18n="confirm">Confirmar Todo →</button>
-    </div>
-  </div>
-</div>
-
-<!-- Add History Record Modal -->
-<div class="modal-overlay" id="modal-hist-add">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">📋 Agregar Registro Histórico</span>
-      <button class="modal-close" onclick="closeModal('modal-hist-add')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p class="text-muted text-sm mb-2">Registra una asignación pasada manualmente.</p>
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label" data-i18n="coordinator">Coordinador</label>
-          <select class="form-control" id="hadd-coord"></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="territory">Territorio</label>
-          <select class="form-control" id="hadd-terr"></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="assignedDate">Fecha Asignación</label>
-          <input type="date" class="form-control" id="hadd-assigned">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="expiresDate">Fecha Expiración</label>
-          <input type="date" class="form-control" id="hadd-expires">
-        </div>
-        <div class="form-group">
-          <label class="form-label" data-i18n="returnedDate">Fecha Devolución</label>
-          <input type="date" class="form-control" id="hadd-returned">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Estado</label>
-          <select class="form-control" id="hadd-state">
-            <option value="Devuelto" data-i18n="statusReturned">Devuelto</option>
-            <option value="Asignado" data-i18n="statusAssigned">Asignado</option>
-            <option value="Vencido" data-i18n="statusExpired">Vencido</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-hist-add')" data-i18n="cancel">Cancelar</button>
-      <button class="btn btn-primary" onclick="doAddHistRecord()" data-i18n="save">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Campaign Modal -->
-<div class="modal-overlay" id="modal-campaign">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" id="campaign-modal-title">Nueva Campaña</span>
-      <button class="modal-close" onclick="closeModal('modal-campaign')">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="campaign-id">
-      <div class="form-group">
-        <label class="form-label">Nombre de la Campaña</label>
-        <input type="text" class="form-control" id="campaign-name" placeholder="Ej: Memorial 2026, Campaña de Revistas">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Descripción</label>
-        <textarea class="form-control" id="campaign-desc" rows="2" placeholder="Descripción de la campaña..."></textarea>
-      </div>
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label class="form-label">Fecha de Inicio</label>
-          <input type="date" class="form-control" id="campaign-start">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Fecha de Fin</label>
-          <input type="date" class="form-control" id="campaign-end">
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-campaign')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveCampaign()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Auto Assign Campaign Modal -->
-<div class="modal-overlay" id="modal-campaign-assign">
-  <div class="modal modal-lg">
-    <div class="modal-header">
-      <span class="modal-title">⚡ Auto Asignar Campaña</span>
-      <button class="modal-close" onclick="closeModal('modal-campaign-assign')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p class="text-muted text-sm mb-2">Los territorios se distribuirán en bloques consecutivos respetando el límite de cada coordinador. Se rotará basado en el historial de campañas anteriores.</p>
-      <div id="campaign-assign-preview" style="max-height:360px;overflow-y:auto;"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-campaign-assign')">Cancelar</button>
-      <button class="btn btn-green" onclick="doAutoAssignCampaign()">Confirmar Asignación →</button>
-    </div>
-  </div>
-</div>
-
-<!-- Email Report Settings Modal -->
-<div class="modal-overlay" id="modal-report-settings">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">📧 Configurar Reporte Diario</span>
-      <button class="modal-close" onclick="closeModal('modal-report-settings')">✕</button>
-    </div>
-    <div class="modal-body">
-      <p class="text-muted text-sm mb-2">El reporte se enviará diariamente con el progreso de la campaña activa. Usa <a href="https://emailjs.com" target="_blank">EmailJS.com</a> (gratis).</p>
-      <div class="form-group">
-        <label class="form-label">Correos destinatarios (separados por coma)</label>
-        <input type="text" class="form-control" id="report-emails" placeholder="admin@email.com, otro@email.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">EmailJS Service ID</label>
-        <input type="text" class="form-control" id="report-service-id" placeholder="service_xxxxxxx">
-      </div>
-      <div class="form-group">
-        <label class="form-label">EmailJS Template ID</label>
-        <input type="text" class="form-control" id="report-template-id" placeholder="template_xxxxxxx">
-      </div>
-      <div class="form-group">
-        <label class="form-label">EmailJS Public Key</label>
-        <input type="text" class="form-control" id="report-public-key" placeholder="xxxxxxxxxxxxxxx">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-report-settings')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveReportSettings()">Guardar</button>
+      <button class="btn btn-secondary" id="cls-phone-2">Cancelar</button>
+      <button class="btn btn-green" id="save-phone">Guardar</button>
     </div>
   </div>
 </div>
 
 <script src="/assets/i18n.js"></script>
 <script type="module">
-import { Auth, DB, Store, Utils } from '/assets/firebase2.js';
+import { Auth, DB, Utils } from '/assets/firebase2.js';
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let territories = [], coordinators = [], assignments = [], settings = {};
-let selectedTerrs = [], returningTerrId = null, editingTerrId = null, editingCoordUid = null;
-let pendingMapFile = null, pendingAddresses = [], pendingPhone = [];
-let autoAllPlan = [];
+let myTerritories = [], addresses = [], phoneRecords = [], settings = {};
+let currentTerrId = null, editingAddrId = null, editingPhoneId = null;
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => Lang.init());
+document.addEventListener('DOMContentLoaded', () => Lang.init());
 
 Auth.onReady(async (user) => {
   if (!user) { window.location.href = '/index.html'; return; }
   const profile = Auth.currentProfile;
-  if (profile?.role !== 'admin') { window.location.href = '/coordinator/'; return; }
-
-  document.getElementById('user-name').textContent = profile.name || user.email;
-  document.getElementById('user-email').textContent = user.email;
-
-  await loadAll();
+  if (!profile) { window.location.href = '/index.html'; return; }
+  document.getElementById('dash-user-name').textContent = profile.name || user.email;
+  document.getElementById('btn-logout').addEventListener('click', async (e) => {
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      await Auth.logout();
+    } catch {
+      window.location.href = '/index.html';
+    }
+  });
+  settings = await DB.getSettings();
+  await loadMyTerritories(profile.uid);
+  await loadActiveCampaign(profile.uid);
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   Lang.apply();
 });
 
-async function loadAll() {
-  [territories, coordinators, assignments, settings] = await Promise.all([
-    DB.getTerritories(), DB.getCoordinators(), DB.getAssignments(), DB.getSettings()
-  ]);
-  syncStates();
-  renderDashboard();
-  renderTerritories();
-  renderAssignments();
-  renderCoordinators();
-  renderCoverage();
-  renderHistory();
-  renderSettings();
-}
-
-// ── State sync ────────────────────────────────────────────────────────────────
-function syncStates() {
+async function loadMyTerritories(coordId) {
+  const all = await DB.getTerritories();
   const now = Utils.today();
-  territories.forEach(t => {
-    if (t.state === 'Asignado' && t.currentAssign?.expiresDate < now) {
-      t.state = 'Vencido';
-    }
-  });
+  myTerritories = all.filter(t => t.currentAssign?.coordinatorId === coordId && (t.state === 'Asignado' || t.state === 'Vencido'));
+  myTerritories.forEach(t => { if (t.currentAssign?.expiresDate < now) t.state = 'Vencido'; });
+  renderDashboard();
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function getCoord(id) { return coordinators.find(c => c.id === id); }
-function coordName(id) { const c = getCoord(id); return c?.name || '—'; }
-function coordMax(id) { const c = getCoord(id); return c?.maxTerr ?? settings.maxTerr ?? 8; }
-function assignedCount(coordId) { return territories.filter(t => t.state === 'Asignado' && t.currentAssign?.coordinatorId === coordId).length; }
-function statusBadge(st) {
-  const map = { Asignado:'badge-blue', Disponible:'badge-green', Vencido:'badge-red', Devuelto:'badge-gray' };
-  const labels = { Asignado: Lang.t('statusAssigned'), Disponible: Lang.t('statusAvailable'), Vencido: Lang.t('statusExpired'), Devuelto: Lang.t('statusReturned') };
-  return `<span class="badge ${map[st]||'badge-gray'}">${labels[st]||st}</span>`;
-}
-
-// ── Navigation ────────────────────────────────────────────────────────────────
-window.showSection = function(name) {
-  document.querySelectorAll('section[id^="sec-"]').forEach(s => s.style.display = 'none');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('sec-' + name).style.display = 'block';
-  document.querySelectorAll('.nav-item').forEach(n => {
-    if (n.getAttribute('onclick')?.includes(name)) n.classList.add('active');
-  });
-  if (name === 'campaigns') renderCampaigns();
-  if (window.innerWidth < 768) toggleSidebar();
-};
-
-window.toggleSidebar = function() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebar-overlay').classList.toggle('open');
-};
-
-window.closeModal = function(id) { document.getElementById(id)?.classList.remove('open'); };
-
-// ── Dashboard ─────────────────────────────────────────────────────────────────
 function renderDashboard() {
-  const total = territories.length;
-  const assigned = territories.filter(t => t.state === 'Asignado').length;
-  const available = territories.filter(t => t.state === 'Disponible').length;
-  const expired = territories.filter(t => t.state === 'Vencido').length;
-  const returned = territories.filter(t => t.state === 'Devuelto').length;
-
+  const assigned = myTerritories.filter(t => t.state === 'Asignado').length;
+  const expired = myTerritories.filter(t => t.state === 'Vencido').length;
   document.getElementById('dash-stats').innerHTML = `
-    <div class="stat-card stat-blue"><div class="stat-label" data-i18n="dashTotal">${Lang.t('dashTotal')}</div><div class="stat-value">${total}</div></div>
-    <div class="stat-card stat-yellow"><div class="stat-label">${Lang.t('dashAssigned')}</div><div class="stat-value">${assigned}</div></div>
-    <div class="stat-card stat-green"><div class="stat-label">${Lang.t('dashAvailable')}</div><div class="stat-value">${available}</div></div>
-    <div class="stat-card stat-red"><div class="stat-label">${Lang.t('dashExpired')}</div><div class="stat-value">${expired}</div></div>
-    <div class="stat-card stat-muted"><div class="stat-label">${Lang.t('dashReturned')}</div><div class="stat-value">${returned}</div></div>`;
-
-  // Active coordinators
-  const coordRows = coordinators.map(c => {
-    const cnt = assignedCount(c.id);
-    if (cnt === 0) return '';
-    const myTerrs = territories.filter(t => t.state === 'Asignado' && t.currentAssign?.coordinatorId === c.id);
-    const nearest = myTerrs.map(t => t.currentAssign.expiresDate).sort()[0];
-    const du = Utils.daysUntil(nearest);
-    return `<tr><td>${c.name}</td><td><span class="badge badge-blue">${cnt}</span></td>
-      <td><span class="badge ${du < 30 ? 'badge-red' : 'badge-blue'}">${Utils.fmtDate(nearest)}</span></td></tr>`;
-  }).join('');
-  document.getElementById('dash-coordinators').innerHTML = coordRows || `<tr><td colspan="3" class="text-muted text-sm" style="padding:1.5rem">Sin coordinadores activos</td></tr>`;
-
-  // Expiring soon
-  const soon = territories.filter(t => t.state === 'Asignado' && Utils.daysUntil(t.currentAssign?.expiresDate) <= 30)
-    .sort((a, b) => a.currentAssign.expiresDate.localeCompare(b.currentAssign.expiresDate));
-  document.getElementById('dash-expiring').innerHTML = soon.map(t => {
-    const du = Utils.daysUntil(t.currentAssign.expiresDate);
-    return `<tr><td><strong>${t.number}</strong></td><td>${coordName(t.currentAssign.coordinatorId)}</td>
-      <td><span class="badge ${du < 10 ? 'badge-red' : du < 20 ? 'badge-yellow' : 'badge-blue'}">${Utils.fmtDate(t.currentAssign.expiresDate)} (${du}d)</span></td></tr>`;
-  }).join('') || `<tr><td colspan="3" class="text-muted text-sm" style="padding:1.5rem">Sin territorios por vencer</td></tr>`;
-}
-
-// ── Territories ───────────────────────────────────────────────────────────────
-function renderTerritories() {
-  const q = document.getElementById('terr-search')?.value.toLowerCase() || '';
-  const sf = document.getElementById('terr-status-filter')?.value || '';
-  const list = territories.filter(t => {
-    const matchQ = !q || String(t.number).toLowerCase().includes(q) || t.streets?.toLowerCase().includes(q);
-    const matchS = !sf || t.state === sf;
-    return matchQ && matchS;
-  });
-
-  if (!list.length) {
-    document.getElementById('territory-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🗺️</div><p>${Lang.t('noTerritories')}</p></div>`;
+    <div class="stat-card stat-blue"><div class="stat-label">Asignados</div><div class="stat-value">${assigned}</div></div>
+    <div class="stat-card stat-red"><div class="stat-label">Vencidos</div><div class="stat-value">${expired}</div></div>
+    <div class="stat-card stat-muted"><div class="stat-label">Total</div><div class="stat-value">${myTerritories.length}</div></div>`;
+  document.getElementById('expired-banner').style.display = expired > 0 ? 'block' : 'none';
+  if (!myTerritories.length) {
+    document.getElementById('my-terr-list').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No tienes territorios asignados</p></div>`;
     return;
   }
-
-  document.getElementById('territory-grid').innerHTML = list.map(t => `
-    <div class="territory-card">
-      <div class="tc-map">${t.mapUrl ? `<img src="${t.mapUrl}" alt="Mapa ${t.number}">` : `<div class="no-map">🗺️</div>`}</div>
-      <div class="tc-body">
-        <div class="tc-number">Territorio ${t.number}</div>
-        <div class="tc-streets">${t.streets || '—'}</div>
-        <div class="meta mt-1">${statusBadge(t.state)}
-          ${t.state === 'Asignado' ? `<span class="badge badge-gray">${coordName(t.currentAssign?.coordinatorId)}</span>` : ''}
-        </div>
-      </div>
-      <div class="tc-footer">
-        <div class="flex gap-1">
-          ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭</a>` : ''}
-          <button class="btn btn-secondary btn-sm" onclick="openTerritoryModal('${t.id}')">✏️</button>
-          ${t.state === 'Asignado' || t.state === 'Vencido' ? `<button class="btn btn-secondary btn-sm" onclick="openReturnModal('${t.id}')">↩</button>` : ''}
-          <button class="btn btn-secondary btn-sm" onclick="openShareModal('${t.id}')">🔗</button>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteTerritoryConfirm('${t.id}')">🗑</button>
-      </div>
-    </div>`).join('');
-}
-
-window.filterTerritories = renderTerritories;
-
-window.openTerritoryModal = function(id = null) {
-  editingTerrId = id;
-  pendingMapFile = null; pendingAddresses = []; pendingPhone = [];
-  document.getElementById('terr-id').value = id || '';
-  document.getElementById('map-preview').style.display = 'none';
-  document.getElementById('addr-preview').style.display = 'none';
-  document.getElementById('phone-preview').style.display = 'none';
-  const addrFile = document.getElementById('addr-file');
-  const phoneFile = document.getElementById('phone-file');
-  const mapFile = document.getElementById('map-file');
-  if (addrFile) addrFile.value = '';
-  if (phoneFile) phoneFile.value = '';
-  if (mapFile) mapFile.value = '';
-
-  if (id) {
-    const t = territories.find(x => x.id === id);
-    document.getElementById('terr-modal-title').textContent = Lang.t('editTerritory');
-    document.getElementById('terr-number').value = t.number || '';
-    document.getElementById('terr-streets').value = t.streets || '';
-    document.getElementById('terr-startpoint').value = t.startPoint || '';
-    document.getElementById('terr-maplink').value = t.mapLink || '';
-    document.getElementById('terr-notes').value = t.notes || '';
-    if (t.mapUrl) {
-      document.getElementById('map-preview-img').src = t.mapUrl;
-      document.getElementById('map-preview').style.display = 'block';
-    }
-  } else {
-    document.getElementById('terr-modal-title').textContent = Lang.t('createTerritory');
-    document.getElementById('terr-number').value = '';
-    document.getElementById('terr-streets').value = '';
-    document.getElementById('terr-startpoint').value = '';
-    document.getElementById('terr-maplink').value = '';
-    document.getElementById('terr-notes').value = '';
-  }
-  document.getElementById('modal-territory').classList.add('open');
-};
-
-window.previewMap = function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  pendingMapFile = file;
-  const url = URL.createObjectURL(file);
-  document.getElementById('map-preview-img').src = url;
-  document.getElementById('map-preview').style.display = 'block';
-};
-
-window.removeMapImage = function() {
-  pendingMapFile = null;
-  document.getElementById('map-preview').style.display = 'none';
-  document.getElementById('map-file').value = '';
-};
-
-window.previewAddresses = async function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  try {
-    pendingAddresses = await Utils.parseAddressFile(file);
-    document.getElementById('addr-preview-count').textContent = `✅ ${pendingAddresses.length} direcciones detectadas`;
-    document.getElementById('addr-preview').style.display = 'block';
-  } catch (err) {
-    Utils.toast(Lang.t('errorUploading'), 'error');
-  }
-};
-
-window.previewPhone = async function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  try {
-    pendingPhone = await Utils.parsePhoneFile(file);
-    document.getElementById('phone-preview-count').textContent = `✅ ${pendingPhone.length} registros telefónicos detectados`;
-    document.getElementById('phone-preview').style.display = 'block';
-  } catch (err) {
-    Utils.toast(Lang.t('errorUploading'), 'error');
-  }
-};
-
-window.saveTerritory = async function() {
-  const btn = document.getElementById('terr-save-btn');
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span>`;
-
-  const id = document.getElementById('terr-id').value || null;
-  const data = {
-    number: document.getElementById('terr-number').value.trim(),
-    streets: document.getElementById('terr-streets').value.trim(),
-    startPoint: document.getElementById('terr-startpoint').value.trim(),
-    mapLink: document.getElementById('terr-maplink').value.trim(),
-    notes: document.getElementById('terr-notes').value.trim(),
-    state: id ? territories.find(t => t.id === id)?.state || 'Disponible' : 'Disponible',
-  };
-
-  if (!data.number) { Utils.toast(Lang.t('errorRequired'), 'error'); btn.disabled = false; btn.innerHTML = Lang.t('save'); return; }
-
-  try {
-    const terrId = await DB.saveTerritory(data, id);
-
-    // Upload map image to Firebase Storage
-    if (pendingMapFile) {
-      const url = await Store.uploadMapImage(terrId, pendingMapFile);
-      await DB.saveTerritory({ mapUrl: url }, terrId);
-      data.mapUrl = url;
-    }
-
-    // Upload addresses
-    if (pendingAddresses.length > 0) {
-      await DB.bulkSaveAddresses(terrId, pendingAddresses);
-    }
-
-    // Upload phone
-    if (pendingPhone.length > 0) {
-      await DB.bulkSavePhoneRecords(terrId, pendingPhone);
-    }
-
-    Utils.toast(Lang.t('savedSuccess'), 'success');
-    closeModal('modal-territory');
-    await loadAll();
-  } catch (err) {
-    Utils.toast(Lang.t('errorSaving') + ': ' + err.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = Lang.t('save');
-  }
-};
-
-window.deleteTerritoryConfirm = async function(id) {
-  if (!Utils.confirm(Lang.t('confirmDelete'))) return;
-  try {
-    await DB.deleteTerritory(id);
-    Utils.toast(Lang.t('deletedSuccess'), 'success');
-    await loadAll();
-  } catch (err) {
-    Utils.toast(Lang.t('errorDeleting'), 'error');
-  }
-};
-
-// ── Share link ────────────────────────────────────────────────────────────────
-window.openShareModal = function(terrId) {
-  const t = territories.find(x => x.id === terrId);
-  const url = `${window.location.origin}/view/?t=${terrId}&n=${encodeURIComponent(t?.number || '')}`;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(url).then(() => Utils.toast(Lang.t('linkCopied'), 'success'));
-  } else {
-    prompt(Lang.t('shareLink'), url);
-  }
-};
-
-// ── Assignments ───────────────────────────────────────────────────────────────
-function renderAssignments() {
-  // Populate coord filter
-  const cf = document.getElementById('assign-coord-filter');
-  if (cf) {
-    const val = cf.value;
-    cf.innerHTML = `<option value="">— ${Lang.t('coordinators')} —</option>` +
-      coordinators.map(c => `<option value="${c.id}" ${val === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
-  }
-
-  const q = document.getElementById('assign-search')?.value.toLowerCase() || '';
-  const cf2 = document.getElementById('assign-coord-filter')?.value || '';
-
-  const rows = territories.filter(t => {
-    if (t.state === 'Disponible') return false;
-    const matchQ = !q || String(t.number).includes(q) || coordName(t.currentAssign?.coordinatorId).toLowerCase().includes(q);
-    const matchC = !cf2 || t.currentAssign?.coordinatorId === cf2;
-    return matchQ && matchC;
-  }).map(t => {
-    const ca = t.currentAssign;
-    const du = ca?.expiresDate ? Utils.daysUntil(ca.expiresDate) : null;
-    return `<tr>
-      <td><strong>${t.number}</strong></td>
-      <td>${coordName(ca?.coordinatorId)}</td>
-      <td>${Utils.fmtDate(ca?.assignedDate)}</td>
-      <td><span class="badge ${du !== null && du < 30 ? 'badge-red' : 'badge-blue'}">${Utils.fmtDate(ca?.expiresDate)}</span></td>
-      <td>${ca?.returnedDate ? Utils.fmtDate(ca.returnedDate) : '—'}</td>
-      <td>${statusBadge(t.state)}</td>
-      <td>
-        ${t.state === 'Asignado' || t.state === 'Vencido' ? `<button class="btn btn-secondary btn-sm" onclick="openReturnModal('${t.id}')">↩ ${Lang.t('returnTerritory')}</button>` : ''}
-      </td>
-    </tr>`;
-  }).join('');
-
-  document.getElementById('assign-table').innerHTML = rows || `<tr><td colspan="7" class="text-muted text-sm" style="padding:1.5rem;text-align:center">Sin asignaciones activas</td></tr>`;
-}
-
-window.filterAssignments = renderAssignments;
-
-// Assign modal
-window.openAssignModal = function() {
-  selectedTerrs = [];
-  document.getElementById('assign-coord').innerHTML = coordinators.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  document.getElementById('assign-date').value = Utils.today();
-  document.getElementById('assign-expires').value = Utils.addDays(Utils.today(), settings.maxDays || 120);
-  updateCoordInfo();
-  renderTerrChips();
-  document.getElementById('modal-assign').classList.add('open');
-};
-
-window.updateCoordInfo = function() {
-  const coordId = document.getElementById('assign-coord').value;
-  const max = coordMax(coordId);
-  const cnt = assignedCount(coordId);
-  document.getElementById('coord-limit-info').textContent = `${cnt}/${max} territorios asignados`;
-  renderTerrChips();
-};
-
-function renderTerrChips() {
-  const q = document.getElementById('terr-chip-filter')?.value.toLowerCase() || '';
-  const coordId = document.getElementById('assign-coord')?.value;
-  const max = coordMax(coordId);
-  const cnt = assignedCount(coordId);
-
-  const chips = territories.filter(t => !q || String(t.number).toLowerCase().includes(q)).map(t => {
-    const isSel = selectedTerrs.includes(t.id);
-    const isAssigned = t.state === 'Asignado';
+  const html = myTerritories.map(t => {
     const isExp = t.state === 'Vencido';
-    let style = `display:inline-block;padding:0.25rem 0.6rem;border-radius:6px;font-family:var(--font-mono);font-size:0.75rem;cursor:pointer;border:1px solid;transition:all .12s;user-select:none;`;
-    if (isAssigned) style += `border-color:var(--border);background:var(--border);color:var(--muted);cursor:not-allowed;opacity:0.5;`;
-    else if (isSel) style += `border-color:var(--accent);background:var(--accent);color:#fff;`;
-    else if (isExp) style += `border-color:var(--red);color:var(--red);background:transparent;`;
-    else style += `border-color:var(--border);background:var(--surface2);color:var(--text);`;
-    return `<span style="${style}" onclick="toggleTerrChip('${t.id}')">${t.number}</span>`;
+    const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+    return `<div class="terr-card" style="${isExp ? 'border-color:var(--red)' : ''}">
+      ${t.mapUrl ? `<img class="terr-card-map" src="${t.mapUrl}" alt="${t.number}">` : ''}
+      <div class="terr-card-body">
+        <div class="terr-card-num">Territorio ${t.number}</div>
+        <div class="terr-card-streets">${t.streets || '—'}</div>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.6rem;">
+          <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? 'Vencido' : 'Asignado'}</span>
+          <span class="badge badge-gray">Expira: ${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
+          ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du}d</span>` : ''}
+        </div>
+      </div>
+      <div class="terr-card-footer">
+        <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}">📋 Ver Territorio</button>
+        ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭 Navegar</a>` : ''}
+      </div>
+    </div>`;
   }).join('');
-
-  document.getElementById('terr-chips').innerHTML = chips;
-  document.getElementById('selected-info').textContent = `${selectedTerrs.length} seleccionados · puede recibir ${Math.max(0, max - cnt)} más`;
+  document.getElementById('my-terr-list').innerHTML = html;
+  document.querySelectorAll('.open-terr-btn').forEach(btn => {
+    btn.addEventListener('click', () => { returnToCampaign = false; openTerritory(btn.dataset.id); });
+  });
 }
 
-window.toggleTerrChip = function(id) {
-  const t = territories.find(x => x.id === id);
-  if (!t || t.state === 'Asignado') return;
-  const coordId = document.getElementById('assign-coord').value;
-  const max = coordMax(coordId);
-  const cnt = assignedCount(coordId);
-  if (selectedTerrs.includes(id)) {
-    selectedTerrs = selectedTerrs.filter(x => x !== id);
-  } else {
-    if (cnt + selectedTerrs.length >= max && max > 0) { Utils.toast(`Máximo ${max} territorios`, 'error'); return; }
-    selectedTerrs.push(id);
-  }
-  renderTerrChips();
-};
-
-window.autoSelectTerr = function() {
-  const coordId = document.getElementById('assign-coord').value;
-  const max = coordMax(coordId);
-  const cnt = assignedCount(coordId);
-  const canAdd = max - cnt - selectedTerrs.length;
-  if (canAdd <= 0) { Utils.toast('El coordinador ya está en su límite', 'error'); return; }
-  const available = territories.filter(t => t.state === 'Disponible' && !selectedTerrs.includes(t.id));
-  available.slice(0, canAdd).forEach(t => selectedTerrs.push(t.id));
-  renderTerrChips();
-};
-
-window.doAssign = async function() {
-  if (!selectedTerrs.length) { Utils.toast(Lang.t('errorRequired'), 'error'); return; }
-  const coordId = document.getElementById('assign-coord').value;
-  const assignedDate = document.getElementById('assign-date').value;
-  const expiresDate = document.getElementById('assign-expires').value;
-
-  try {
-    const batch = [];
-    for (const terrId of selectedTerrs) {
-      const t = territories.find(x => x.id === terrId);
-      if (!t) continue;
-      batch.push(DB.saveTerritory({ state: 'Asignado', currentAssign: { coordinatorId: coordId, assignedDate, expiresDate, returnedDate: null } }, terrId));
-      batch.push(DB.createAssignment({ territoryId: terrId, territoryNumber: t.number, coordinatorId: coordId, assignedDate, expiresDate, returnedDate: null, state: 'Asignado' }));
-    }
-    await Promise.all(batch);
-    Utils.toast(Lang.t('assignedSuccess'), 'success');
-    closeModal('modal-assign');
-    selectedTerrs = [];
-    await loadAll();
-  } catch (err) {
-    Utils.toast(Lang.t('errorSaving'), 'error');
-  }
-};
-
-// Return
-window.openReturnModal = function(terrId) {
-  returningTerrId = terrId;
-  document.getElementById('return-date').value = Utils.today();
-  document.getElementById('modal-return').classList.add('open');
-};
-
-window.doReturn = async function() {
-  const returnedDate = document.getElementById('return-date').value;
-  const t = territories.find(x => x.id === returningTerrId);
+async function openTerritory(terrId) {
+  returnToCampaign = returnToCampaign || false;
+  currentTerrId = terrId;
+  const t = myTerritories.find(x => x.id === terrId);
   if (!t) return;
-  try {
-    await DB.saveTerritory({ state: 'Devuelto', currentAssign: { ...t.currentAssign, returnedDate } }, returningTerrId);
-    // Update assignment record
-    const assigns = await DB.getAssignments({ territoryId: returningTerrId });
-    const active = assigns.find(a => a.state === 'Asignado' && a.coordinatorId === t.currentAssign?.coordinatorId);
-    if (active) await DB.updateAssignment(active.id, { returnedDate, state: 'Devuelto' });
-    Utils.toast(Lang.t('returnedSuccess'), 'success');
-    closeModal('modal-return');
-    await loadAll();
-  } catch (err) {
-    Utils.toast(Lang.t('errorSaving'), 'error');
-  }
-};
+  document.getElementById('detail-title').textContent = `Territorio ${t.number}`;
+  document.getElementById('detail-streets').textContent = t.streets || '—';
+  const mapImg = document.getElementById('detail-map-img');
+  if (t.mapUrl) { mapImg.src = t.mapUrl; mapImg.style.display = 'block'; }
+  else mapImg.style.display = 'none';
+  const isExp = t.state === 'Vencido';
+  const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+  document.getElementById('detail-info').innerHTML = `
+    <div class="info-box"><div class="info-box-label">Estado</div><div class="info-box-value"><span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? 'Vencido' : 'Asignado'}</span></div></div>
+    <div class="info-box"><div class="info-box-label">Expira</div><div class="info-box-value" style="${isExp ? 'color:var(--red)' : ''}">${Utils.fmtDate(t.currentAssign?.expiresDate)}</div></div>`;
+  if (t.startPoint) { document.getElementById('detail-start-text').textContent = t.startPoint; document.getElementById('detail-start').style.display = 'block'; }
+  else document.getElementById('detail-start').style.display = 'none';
+  if (t.mapLink) {
+    document.getElementById('detail-nav-btn').href = t.mapLink; document.getElementById('detail-nav-btn').style.display = 'inline-flex';
+    document.getElementById('detail-nav-full').href = t.mapLink; document.getElementById('detail-nav-full').style.display = 'block';
+  } else { document.getElementById('detail-nav-btn').style.display = 'none'; document.getElementById('detail-nav-full').style.display = 'none'; }
+  [addresses, phoneRecords] = await Promise.all([DB.getAddresses(terrId), DB.getPhoneRecords(terrId)]);
+  renderDoorList(); renderPhoneList();
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-detail').style.display = 'block';
+  window.scrollTo(0, 0);
+  activateTab('door');
+}
 
-// Auto assign all
-window.openAutoAssignAll = async function() {
-  syncStates();
-  const assignedDate = Utils.today();
-  autoAllPlan = [];
-
-  // Sort territories sequentially
-  const sortedTerrs = [...territories].sort((a, b) =>
-    String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
-
-  // Get available territories
-  const available = territories
-    .filter(t => t.state === 'Disponible')
-    .sort((a, b) => String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
-
-  if (!available.length) {
-    Utils.toast('Sin territorios disponibles', 'info');
-    return;
-  }
-
-  // Build combined history for each coordinator from BOTH regular + campaign assignments
-  Utils.toast('Calculando rotación...', 'info');
-
-  const coordHistory = {};
-  for (const c of coordinators) {
-    if ((c.maxTerr ?? settings.maxTerr ?? 8) === 0) continue;
-
-    // Get regular assignment history
-    const regularHistory = await DB.getAssignments({ coordinatorId: c.id });
-    const regularTerrIds = regularHistory.map(a => a.territoryId);
-
-    // Get campaign assignment history
-    const campHistory = await DB.getCoordinatorCampaignHistory(c.id);
-    const campTerrIds = campHistory.map(a => a.territoryId);
-
-    // Combine both histories
-    const allWorked = [...new Set([...regularTerrIds, ...campTerrIds])];
-    coordHistory[c.id] = allWorked;
-  }
-
-  // For each coordinator find the highest sequential index they've worked
-  // Then assign the next available block after that point
-  const activeCoords = coordinators.filter(c => (c.maxTerr ?? settings.maxTerr ?? 8) > 0);
-
-  // Find next start index for each coordinator
-  const coordNextIdx = {};
-  activeCoords.forEach(c => {
-    const worked = coordHistory[c.id] || [];
-    if (!worked.length) {
-      coordNextIdx[c.id] = 0;
-    } else {
-      // Find the highest index territory they've worked
-      let maxIdx = -1;
-      worked.forEach(terrId => {
-        const idx = sortedTerrs.findIndex(t => t.id === terrId);
-        if (idx > maxIdx) maxIdx = idx;
-      });
-      // Next index wraps around if past the end (full rotation complete)
-      coordNextIdx[c.id] = maxIdx >= sortedTerrs.length - 1 ? 0 : maxIdx + 1;
-    }
+function renderDoorList() {
+  document.getElementById('door-count').textContent = `${addresses.length} direcciones`;
+  if (!addresses.length) { document.getElementById('door-list').innerHTML = `<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;">Sin direcciones</div>`; return; }
+  
+  let html = '';
+  addresses.forEach((a, i) => {
+    // Insert button above each row
+    html += `<div class="insert-row-btn" data-order="${a.order ?? i}" data-after="${i === 0 ? -1 : (addresses[i-1].order ?? i-1)}" style="height:4px;background:transparent;cursor:pointer;transition:all .15s;position:relative;" title="Insertar dirección aquí">
+      <div style="position:absolute;left:50%;transform:translateX(-50%);top:-10px;opacity:0;transition:opacity .15s;background:var(--accent);color:#fff;border-radius:20px;padding:0.15rem 0.6rem;font-size:0.7rem;white-space:nowrap;pointer-events:none;">+ Insertar aquí</div>
+    </div>`;
+    html += `<div class="addr-row ${a.visitDate ? 'visited' : ''}">
+      <div class="addr-num">${a.address}</div>
+      <div class="addr-street">${a.street || ''}</div>
+      <div class="addr-obs">${a.observation ? `<span class="obs-tag">${a.observation}</span>` : ''}${a.comment ? `<span style="font-size:0.78rem;color:var(--muted);margin-left:0.3rem;">${a.comment}</span>` : ''}</div>
+      <div class="addr-date">${a.visitDate ? Utils.fmtDate(a.visitDate) : ''}</div>
+      <button class="edit-btn edit-addr-btn" data-id="${a.id}">✏️</button>
+    </div>`;
   });
+  // Insert button at the end
+  html += `<div class="insert-row-btn" data-order="${(addresses[addresses.length-1]?.order ?? addresses.length-1) + 1}" data-after="${addresses.length - 1}" style="height:4px;background:transparent;cursor:pointer;transition:all .15s;position:relative;" title="Insertar al final">
+    <div style="position:absolute;left:50%;transform:translateX(-50%);top:-10px;opacity:0;transition:opacity .15s;background:var(--accent);color:#fff;border-radius:20px;padding:0.15rem 0.6rem;font-size:0.7rem;white-space:nowrap;pointer-events:none;">+ Insertar aquí</div>
+  </div>`;
 
-  // Sort coordinators by their next start index so assignments flow sequentially
-  activeCoords.sort((a, b) => coordNextIdx[a.id] - coordNextIdx[b.id]);
+  document.getElementById('door-list').innerHTML = html;
 
-  // Assign sequential blocks from available territories
-  // We use a rotating pointer starting from each coordinator's next index
-  let usedTerrIds = new Set();
+  // Edit buttons
+  document.querySelectorAll('.edit-addr-btn').forEach(btn => btn.addEventListener('click', () => openEditAddr(btn.dataset.id)));
 
-  activeCoords.forEach(c => {
-    const max = coordMax(c.id);
-    const cnt = assignedCount(c.id);
-    const canAdd = max - cnt;
-    if (canAdd <= 0) return;
-
-    const startIdx = coordNextIdx[c.id];
-    const block = [];
-
-    // Try to pick consecutive available territories starting from startIdx
-    // First pass: from startIdx to end
-    for (let i = startIdx; i < sortedTerrs.length && block.length < canAdd; i++) {
-      const t = sortedTerrs[i];
-      if (t.state === 'Disponible' && !usedTerrIds.has(t.id)) {
-        block.push(t.id);
-        usedTerrIds.add(t.id);
-      }
-    }
-
-    // Second pass: wrap around from beginning if needed
-    if (block.length < canAdd && startIdx > 0) {
-      for (let i = 0; i < startIdx && block.length < canAdd; i++) {
-        const t = sortedTerrs[i];
-        if (t.state === 'Disponible' && !usedTerrIds.has(t.id)) {
-          block.push(t.id);
-          usedTerrIds.add(t.id);
-        }
-      }
-    }
-
-    if (!block.length) return;
-
-    const expDate = Utils.addDays(assignedDate, settings.maxDays || 120);
-    const workedCount = (coordHistory[c.id] || []).length;
-    const isNewRotation = workedCount > 0 && coordNextIdx[c.id] === 0;
-
-    autoAllPlan.push({
-      coordinatorId: c.id,
-      terrIds: block,
-      assignedDate,
-      expDate,
-      startNumber: territories.find(t => t.id === block[0])?.number,
-      endNumber: territories.find(t => t.id === block[block.length-1])?.number,
-      workedBefore: workedCount,
-      isNewRotation
+  // Insert buttons — show label on hover, open modal on click
+  document.querySelectorAll('.insert-row-btn').forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'var(--accent-light)';
+      btn.style.height = '24px';
+      btn.querySelector('div').style.opacity = '1';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+      btn.style.height = '4px';
+      btn.querySelector('div').style.opacity = '0';
+    });
+    btn.addEventListener('click', () => {
+      const insertAfterIdx = parseInt(btn.dataset.after);
+      openInsertAddrModal(insertAfterIdx);
     });
   });
-
-  if (!autoAllPlan.length) {
-    Utils.toast('Sin territorios disponibles o todos en su límite', 'info');
-    return;
-  }
-
-  document.getElementById('auto-all-preview').innerHTML = autoAllPlan.map(plan => `
-    <div style="padding:0.8rem 0;border-bottom:1px solid var(--border)">
-      <div style="font-weight:700;margin-bottom:0.4rem;display:flex;align-items:center;gap:0.5rem;">
-        ${coordName(plan.coordinatorId)}
-        ${plan.isNewRotation ? '<span class="badge badge-yellow">🔄 Nueva rotación</span>' : ''}
-        ${plan.workedBefore === 0 ? '<span class="badge badge-green">Primera vez</span>' : ''}
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.3rem">
-        ${plan.terrIds.map(id => `<span class="badge badge-blue">${territories.find(t=>t.id===id)?.number}</span>`).join('')}
-      </div>
-      <div class="text-muted text-sm">${plan.terrIds.length} territorio(s) · ${plan.startNumber} → ${plan.endNumber} · Expira ${Utils.fmtDate(plan.expDate)}</div>
-    </div>`).join('');
-
-  document.getElementById('modal-auto-all').classList.add('open');
-};
-
-window.doAutoAssignAll = async function() {
-  try {
-    const batch = [];
-    for (const plan of autoAllPlan) {
-      for (const terrId of plan.terrIds) {
-        const t = territories.find(x => x.id === terrId);
-        if (!t) continue;
-        batch.push(DB.saveTerritory({ state: 'Asignado', currentAssign: { coordinatorId: plan.coordinatorId, assignedDate: plan.assignedDate, expiresDate: plan.expDate, returnedDate: null } }, terrId));
-        batch.push(DB.createAssignment({ territoryId: terrId, territoryNumber: t.number, coordinatorId: plan.coordinatorId, assignedDate: plan.assignedDate, expiresDate: plan.expDate, returnedDate: null, state: 'Asignado' }));
-      }
-    }
-    await Promise.all(batch);
-    const total = autoAllPlan.reduce((s, p) => s + p.terrIds.length, 0);
-    Utils.toast(`✅ ${total} territorios asignados`, 'success');
-    closeModal('modal-auto-all');
-    autoAllPlan = [];
-    await loadAll();
-  } catch (err) {
-    Utils.toast(Lang.t('errorSaving'), 'error');
-  }
-};
-
-// ── Coordinators ──────────────────────────────────────────────────────────────
-function renderCoordinators() {
-  document.getElementById('coord-table').innerHTML = coordinators.map(c => {
-    const cnt = assignedCount(c.id);
-    const max = coordMax(c.id);
-    return `<tr>
-      <td><strong>${c.name}</strong></td>
-      <td class="text-muted text-sm">${c.email}</td>
-      <td><span class="badge badge-blue">${cnt}/${max}</span></td>
-      <td><input type="number" value="${c.maxTerr ?? settings.maxTerr ?? 8}" min="0" max="30" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.2rem 0.4rem;color:var(--text);font-size:0.82rem;" onchange="updateCoordMax('${c.id}',this.value)"></td>
-      <td>${max === 0 ? '<span class="badge badge-gray">Inactivo</span>' : '<span class="badge badge-green">Activo</span>'}</td>
-      <td>
-        <div class="flex gap-1">
-          <button class="btn btn-secondary btn-sm" onclick="openCoordinatorModal('${c.id}')">✏️</button>
-          <button class="btn btn-secondary btn-sm" onclick="sendCoordReset('${c.email}')" title="Enviar reset de contraseña">🔑</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteCoordConfirm('${c.id}')">🗑</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">Sin coordinadores</td></tr>`;
 }
 
-window.sendCoordReset = async function(email) {
-  if (!Utils.confirm(`¿Enviar correo de restablecimiento de contraseña a ${email}?`)) return;
-  try {
-    await Auth.resetPassword(email);
-    Utils.toast(`✅ Correo enviado a ${email}`, 'success');
-  } catch (err) {
-    console.error('Reset error:', err);
-    Utils.toast('Error: ' + err.message, 'error');
-  }
-};
+function openInsertAddrModal(insertAfterIdx) {
+  editingAddrId = null;
+  document.getElementById('insert-after-idx').value = insertAfterIdx;
+  document.getElementById('edit-addr-label').textContent = insertAfterIdx >= 0 
+    ? `Insertar después de: ${addresses[insertAfterIdx]?.address || ''}` 
+    : 'Insertar al inicio';
+  document.getElementById('edit-obs').value = '';
+  document.getElementById('edit-comment').value = '';
+  document.getElementById('edit-visit').value = '';
+  document.getElementById('addr-modal-title').textContent = '+ Insertar Dirección';
+  document.getElementById('insert-addr-fields').style.display = 'block';
+  document.getElementById('insert-addr').value = '';
+  document.getElementById('insert-street').value = '';
+  const ds = (settings.doorStatuses?.length) ? settings.doorStatuses : ['Perro afuera','Duerme de día','Negocio','No tocar','Revisitar','Mudado'];
+  document.getElementById('obs-btns').innerHTML = ds.map(s => `<button type="button" class="preset-btn obs-preset-btn" data-val="${s}">${s}</button>`).join('');
+  document.querySelectorAll('.obs-preset-btn').forEach(btn => btn.addEventListener('click', () => {
+    document.getElementById('edit-obs').value = btn.dataset.val;
+    document.querySelectorAll('.obs-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }));
+  document.getElementById('modal-addr').classList.add('open');
+}
 
-window.updateCoordMax = async function(uid, val) {
-  const n = parseInt(val);
-  await DB.updateUser(uid, { maxTerr: isNaN(n) ? null : n });
-  const c = coordinators.find(x => x.id === uid);
-  if (c) c.maxTerr = isNaN(n) ? null : n;
-  renderCoordinators();
-};
+function openEditAddr(id) {
+  editingAddrId = id;
+  const a = addresses.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('addr-modal-title').textContent = 'Editar Dirección';
+  document.getElementById('insert-addr-fields').style.display = 'none';
+  document.getElementById('edit-addr-label').textContent = `${a.address} ${a.street || ''}`;
+  document.getElementById('edit-obs').value = a.observation || '';
+  document.getElementById('edit-comment').value = a.comment || '';
+  document.getElementById('edit-visit').value = a.visitDate || '';
+  const ds = (settings.doorStatuses?.length) ? settings.doorStatuses : ['Perro afuera','Duerme de día','Negocio','No tocar','Revisitar','Mudado'];
+  document.getElementById('obs-btns').innerHTML = ds.map(s => `<button type="button" class="preset-btn obs-preset-btn${s === a.observation ? ' active' : ''}" data-val="${s}">${s}</button>`).join('');
+  document.querySelectorAll('.obs-preset-btn').forEach(btn => btn.addEventListener('click', () => {
+    document.getElementById('edit-obs').value = btn.dataset.val;
+    document.querySelectorAll('.obs-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }));
+  document.getElementById('modal-addr').classList.add('open');
+}
 
-window.openCoordinatorModal = function(uid = null) {
-  editingCoordUid = uid;
-  document.getElementById('coord-uid').value = uid || '';
-  if (uid) {
-    const c = coordinators.find(x => x.id === uid);
-    document.getElementById('coord-modal-title').textContent = Lang.t('editCoordinator');
-    document.getElementById('coord-name').value = c.name || '';
-    document.getElementById('coord-email').value = c.email || '';
-    document.getElementById('coord-max').value = c.maxTerr ?? settings.maxTerr ?? 8;
-    document.getElementById('coord-email-group').style.display = 'none';
-    document.getElementById('coord-pass-group').style.display = 'none';
+document.getElementById('save-addr').addEventListener('click', async () => {
+  const isInsert = !editingAddrId;
+
+  if (isInsert) {
+    // Insert new address at position
+    const insertAfterIdx = parseInt(document.getElementById('insert-after-idx').value);
+    const newAddr = document.getElementById('insert-addr').value.trim();
+    const newStreet = document.getElementById('insert-street').value.trim();
+    if (!newAddr) { Utils.toast('Dirección requerida', 'error'); return; }
+
+    // Calculate new order value between neighbors
+    const beforeOrder = insertAfterIdx >= 0 ? (addresses[insertAfterIdx]?.order ?? insertAfterIdx) : -1;
+    const afterOrder = insertAfterIdx + 1 < addresses.length ? (addresses[insertAfterIdx + 1]?.order ?? insertAfterIdx + 1) : beforeOrder + 2;
+    const newOrder = (beforeOrder + afterOrder) / 2;
+
+    const data = {
+      address: newAddr,
+      street: newStreet,
+      observation: document.getElementById('edit-obs').value.trim(),
+      comment: document.getElementById('edit-comment').value.trim(),
+      visitDate: document.getElementById('edit-visit').value,
+      order: newOrder
+    };
+    await DB.saveAddress(currentTerrId, data, null);
   } else {
-    document.getElementById('coord-modal-title').textContent = Lang.t('addCoordinator');
-    document.getElementById('coord-name').value = '';
-    document.getElementById('coord-email').value = '';
-    document.getElementById('coord-password').value = '';
-    document.getElementById('coord-max').value = settings.maxTerr || 8;
-    document.getElementById('coord-email-group').style.display = 'block';
-    document.getElementById('coord-pass-group').style.display = 'block';
-  }
-  document.getElementById('modal-coordinator').classList.add('open');
-};
-
-window.saveCoordinator = async function() {
-  const uid = document.getElementById('coord-uid').value;
-  const name = document.getElementById('coord-name').value.trim();
-  const email = document.getElementById('coord-email').value.trim();
-  const password = document.getElementById('coord-password').value;
-  const maxTerr = parseInt(document.getElementById('coord-max').value) || 0;
-
-  if (!name) { Utils.toast(Lang.t('errorRequired'), 'error'); return; }
-
-  try {
-    if (uid) {
-      await DB.updateUser(uid, { name, maxTerr });
-    } else {
-      if (!email || !password) { Utils.toast(Lang.t('errorRequired'), 'error'); return; }
-      await Auth.createCoordinator(email, password, name, maxTerr);
-    }
-    Utils.toast(Lang.t('savedSuccess'), 'success');
-    closeModal('modal-coordinator');
-    coordinators = await DB.getCoordinators();
-    renderCoordinators();
-  } catch (err) {
-    Utils.toast(Lang.t('errorSaving') + ': ' + err.message, 'error');
-  }
-};
-
-window.deleteCoordConfirm = async function(uid) {
-  if (!Utils.confirm(Lang.t('confirmDelete'))) return;
-  try {
-    await DB.deleteUser(uid);
-    Utils.toast(Lang.t('deletedSuccess'), 'success');
-    coordinators = await DB.getCoordinators();
-    renderCoordinators();
-  } catch (err) {
-    Utils.toast(Lang.t('errorDeleting'), 'error');
-  }
-};
-
-// ── Coverage ──────────────────────────────────────────────────────────────────
-function renderCoverage() {
-  const stateClass = { Asignado: 'cov-assigned', Vencido: 'cov-expired', Disponible: 'cov-available', Devuelto: 'cov-returned' };
-  document.getElementById('coverage-grid').innerHTML = territories.map(t => `
-    <div class="cov-cell ${stateClass[t.state] || ''}" onclick="showSection('territories')" title="${t.streets || ''}">
-      <div class="cov-num">${t.number}</div>
-      <div class="cov-label">${t.state === 'Asignado' ? coordName(t.currentAssign?.coordinatorId).split(',')[0] : t.state}</div>
-    </div>`).join('');
-}
-
-// ── History ───────────────────────────────────────────────────────────────────
-function renderHistory() {
-  const hcf = document.getElementById('hist-coord-filter');
-  if (hcf) {
-    const val = hcf.value;
-    hcf.innerHTML = `<option value="">— Todos —</option>` + coordinators.map(c => `<option value="${c.id}" ${val === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+    // Edit existing address
+    const a = addresses.find(x => x.id === editingAddrId);
+    if (!a) return;
+    const data = {
+      observation: document.getElementById('edit-obs').value.trim(),
+      comment: document.getElementById('edit-comment').value.trim(),
+      visitDate: document.getElementById('edit-visit').value
+    };
+    Object.assign(a, data);
+    await DB.saveAddress(currentTerrId, data, editingAddrId);
   }
 
-  const q = document.getElementById('hist-search')?.value.toLowerCase() || '';
-  const cf = document.getElementById('hist-coord-filter')?.value || '';
-
-  const rows = assignments.filter(a => {
-    const matchQ = !q || String(a.territoryNumber).includes(q) || coordName(a.coordinatorId).toLowerCase().includes(q);
-    const matchC = !cf || a.coordinatorId === cf;
-    return matchQ && matchC;
-  }).map(a => `<tr>
-    <td><strong>${a.territoryNumber}</strong></td>
-    <td>${coordName(a.coordinatorId)}</td>
-    <td>${Utils.fmtDate(a.assignedDate)}</td>
-    <td>${Utils.fmtDate(a.expiresDate)}</td>
-    <td>${a.returnedDate ? Utils.fmtDate(a.returnedDate) : '—'}</td>
-    <td>${statusBadge(a.state)}</td>
-  </tr>`).join('');
-
-  document.getElementById('hist-table').innerHTML = rows || `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">Sin registros</td></tr>`;
-}
-
-window.filterHistory = renderHistory;
-
-window.openAddHistModal = function() {
-  document.getElementById('hadd-coord').innerHTML = coordinators.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  document.getElementById('hadd-terr').innerHTML = territories.map(t => `<option value="${t.id}">${t.number}</option>`).join('');
-  document.getElementById('modal-hist-add').classList.add('open');
-};
-
-window.doAddHistRecord = async function() {
-  const coordId = document.getElementById('hadd-coord').value;
-  const terrId = document.getElementById('hadd-terr').value;
-  const assignedDate = document.getElementById('hadd-assigned').value;
-  const expiresDate = document.getElementById('hadd-expires').value;
-  const returnedDate = document.getElementById('hadd-returned').value || null;
-  const state = document.getElementById('hadd-state').value;
-  const t = territories.find(x => x.id === terrId);
-  if (!assignedDate || !expiresDate) { Utils.toast(Lang.t('errorRequired'), 'error'); return; }
-  try {
-    await DB.createAssignment({ territoryId: terrId, territoryNumber: t?.number, coordinatorId: coordId, assignedDate, expiresDate, returnedDate, state });
-    if (state === 'Asignado') {
-      await DB.saveTerritory({ state: 'Asignado', currentAssign: { coordinatorId: coordId, assignedDate, expiresDate, returnedDate: null } }, terrId);
-    }
-    Utils.toast(Lang.t('savedSuccess'), 'success');
-    closeModal('modal-hist-add');
-    await loadAll();
-  } catch (err) {
-    Utils.toast(Lang.t('errorSaving'), 'error');
-  }
-};
-
-// ── Settings ──────────────────────────────────────────────────────────────────
-function renderSettings() {
-  document.getElementById('set-max-terr').value = settings.maxTerr ?? 8;
-  document.getElementById('set-max-days').value = settings.maxDays ?? 120;
-  document.getElementById('set-consecutive').value = settings.consecutive ? '1' : '0';
-
-  // Door statuses
-  const ds = settings.doorStatuses || [];
-  document.getElementById('door-statuses-list').innerHTML = ds.map((s, i) => `
-    <div style="display:flex;gap:0.5rem;align-items:center">
-      <input type="text" class="form-control" value="${s}" onchange="updateDoorStatus(${i}, this.value)" style="flex:1">
-      <button class="btn btn-danger btn-sm" onclick="removeDoorStatus(${i})">✕</button>
-    </div>`).join('');
-
-  // Phone statuses
-  const ps = settings.phoneStatuses || [];
-  document.getElementById('phone-statuses-list').innerHTML = ps.map((s, i) => `
-    <div style="display:flex;gap:0.5rem;align-items:center">
-      <input type="text" class="form-control" value="${s}" onchange="updatePhoneStatus(${i}, this.value)" style="flex:1">
-      <button class="btn btn-danger btn-sm" onclick="removePhoneStatus(${i})">✕</button>
-    </div>`).join('');
-}
-
-window.saveGeneralSettings = async function() {
-  settings.maxTerr = parseInt(document.getElementById('set-max-terr').value) || 8;
-  settings.maxDays = parseInt(document.getElementById('set-max-days').value) || 120;
-  settings.consecutive = document.getElementById('set-consecutive').value === '1';
-  await DB.saveSettings(settings);
-  Utils.toast(Lang.t('savedSuccess'), 'success');
-};
-
-window.addDoorStatus = async function() {
-  settings.doorStatuses = [...(settings.doorStatuses || []), 'Nuevo estado'];
-  await DB.saveSettings({ doorStatuses: settings.doorStatuses });
-  renderSettings();
-};
-
-window.updateDoorStatus = async function(i, val) {
-  settings.doorStatuses[i] = val;
-  await DB.saveSettings({ doorStatuses: settings.doorStatuses });
-};
-
-window.removeDoorStatus = async function(i) {
-  settings.doorStatuses.splice(i, 1);
-  await DB.saveSettings({ doorStatuses: settings.doorStatuses });
-  renderSettings();
-};
-
-window.addPhoneStatus = async function() {
-  settings.phoneStatuses = [...(settings.phoneStatuses || []), 'Nuevo estado'];
-  await DB.saveSettings({ phoneStatuses: settings.phoneStatuses });
-  renderSettings();
-};
-
-window.updatePhoneStatus = async function(i, val) {
-  settings.phoneStatuses[i] = val;
-  await DB.saveSettings({ phoneStatuses: settings.phoneStatuses });
-};
-
-window.removePhoneStatus = async function(i) {
-  settings.phoneStatuses.splice(i, 1);
-  await DB.saveSettings({ phoneStatuses: settings.phoneStatuses });
-  renderSettings();
-};
-
-// Export/Import
-window.exportAllData = async function() {
-  const data = { territories, coordinators, assignments, settings };
-  const json = JSON.stringify(data, null, 2);
-  const a = document.createElement('a');
-  a.href = 'data:text/plain,' + encodeURIComponent(json);
-  a.download = 'territorios_backup.json';
-  a.click();
-};
-
-window.importAllData = function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const r = new FileReader();
-  r.onload = async (ev) => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      Utils.toast('Importación no disponible aún — use Firebase directamente', 'info');
-    } catch { Utils.toast(Lang.t('errorUploading'), 'error'); }
-  };
-  r.readAsText(file);
-};
-
-// ── Campaigns ─────────────────────────────────────────────────────────────────
-let campaigns = [], activeCampaign = null, campaignAssignments = [], campaignAutoAssignPlan = [];
-
-async function loadCampaigns() {
-  campaigns = await DB.getCampaigns();
-  activeCampaign = campaigns.find(c => c.status === 'activa') || null;
-  if (activeCampaign) {
-    campaignAssignments = await DB.getCampaignAssignments(activeCampaign.id);
-  }
-}
-
-window.renderCampaigns = async function() {
-  await loadCampaigns();
-
-  // Active campaign banner
-  const banner = document.getElementById('active-campaign-banner');
-  const coverWrap = document.getElementById('campaign-coverage-wrap');
-  if (activeCampaign) {
-    banner.style.display = 'block';
-    coverWrap.style.display = 'block';
-    document.getElementById('active-campaign-name').textContent = `🏳️ ${activeCampaign.name}`;
-    document.getElementById('active-campaign-dates').textContent = `${Utils.fmtDate(activeCampaign.startDate)} — ${Utils.fmtDate(activeCampaign.endDate)}`;
-    const completed = campaignAssignments.filter(a => a.status === 'completado').length;
-    const total = campaignAssignments.length;
-    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-    document.getElementById('campaign-progress-text').textContent = `${completed} / ${total} territorios completados`;
-    document.getElementById('campaign-progress-pct').textContent = `${pct}%`;
-    document.getElementById('campaign-progress-bar').style.width = `${pct}%`;
-    renderCampaignCoverage();
-    renderCampaignCoordBreakdown();
-  } else {
-    banner.style.display = 'none';
-    coverWrap.style.display = 'none';
-  }
-
-  // Campaign list table
-  document.getElementById('campaigns-table').innerHTML = campaigns.map(c => {
-    const statusBadge = c.status === 'activa' ? '<span class="badge badge-green">Activa</span>' :
-      c.status === 'completada' ? '<span class="badge badge-gray">Completada</span>' :
-      '<span class="badge badge-yellow">Borrador</span>';
-    return `<tr>
-      <td><strong>${c.name}</strong></td>
-      <td class="text-muted">${c.description || '—'}</td>
-      <td>${Utils.fmtDate(c.startDate)}</td>
-      <td>${Utils.fmtDate(c.endDate)}</td>
-      <td>${statusBadge}</td>
-      <td>
-        <div class="flex gap-1">
-          ${c.status !== 'activa' ? `<button class="btn btn-secondary btn-sm" onclick="activateCampaign('${c.id}')">▶ Activar</button>` : ''}
-          <button class="btn btn-secondary btn-sm" onclick="openCampaignModal('${c.id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteCampaignConfirm('${c.id}')">🗑</button>
-        </div>
-      </td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="6" class="text-muted text-sm" style="padding:1.5rem;text-align:center">Sin campañas — crea tu primera campaña</td></tr>`;
-};
-
-function renderCampaignCoverage() {
-  const grid = document.getElementById('campaign-coverage-grid');
-  grid.innerHTML = territories.map(t => {
-    const assignment = campaignAssignments.find(a => a.territoryId === t.id);
-    const isComplete = assignment?.status === 'completado';
-    const hasAssignment = !!assignment;
-    const coordName = assignment ? (coordinators.find(c => c.id === assignment.coordinatorId)?.name?.split(',')[0] || '—') : '';
-    return `<div style="background:${isComplete ? 'var(--green-light)' : hasAssignment ? 'var(--accent-light)' : 'var(--surface2)'};border:1px solid ${isComplete ? '#a9efd1' : hasAssignment ? '#c7d7fd' : 'var(--border)'};border-radius:8px;padding:0.5rem;text-align:center;cursor:default;" title="${coordName}">
-      <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:${isComplete ? 'var(--green)' : hasAssignment ? 'var(--accent)' : 'var(--muted)'};">${t.number}</div>
-      <div style="font-size:0.58rem;color:var(--muted);margin-top:0.1rem;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${isComplete ? '✅' : coordName || '—'}</div>
-    </div>`;
-  }).join('');
-}
-
-function renderCampaignCoordBreakdown() {
-  const rows = coordinators.map(c => {
-    const myAssignments = campaignAssignments.filter(a => a.coordinatorId === c.id);
-    if (!myAssignments.length) return '';
-    const completed = myAssignments.filter(a => a.status === 'completado').length;
-    const total = myAssignments.length;
-    const pct = Math.round((completed / total) * 100);
-    return `<tr>
-      <td><strong>${c.name}</strong></td>
-      <td>${total}</td>
-      <td><span class="badge ${completed === total ? 'badge-green' : 'badge-blue'}">${completed}</span></td>
-      <td>
-        <div style="display:flex;align-items:center;gap:0.5rem;">
-          <div class="progress-bar" style="flex:1;"><div class="progress-fill" style="width:${pct}%;background:${completed===total?'var(--green)':'var(--accent)'}"></div></div>
-          <span class="text-xs text-muted">${pct}%</span>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-  document.getElementById('campaign-coord-breakdown').innerHTML = rows || `<tr><td colspan="4" class="text-muted text-sm" style="padding:1rem;text-align:center;">Sin asignaciones</td></tr>`;
-}
-
-window.openCampaignModal = function(id = null) {
-  document.getElementById('campaign-id').value = id || '';
-  document.getElementById('campaign-modal-title').textContent = id ? 'Editar Campaña' : 'Nueva Campaña';
-  if (id) {
-    const c = campaigns.find(x => x.id === id);
-    document.getElementById('campaign-name').value = c.name || '';
-    document.getElementById('campaign-desc').value = c.description || '';
-    document.getElementById('campaign-start').value = c.startDate || '';
-    document.getElementById('campaign-end').value = c.endDate || '';
-  } else {
-    document.getElementById('campaign-name').value = '';
-    document.getElementById('campaign-desc').value = '';
-    document.getElementById('campaign-start').value = Utils.today();
-    document.getElementById('campaign-end').value = '';
-  }
-  document.getElementById('modal-campaign').classList.add('open');
-};
-
-window.saveCampaign = async function() {
-  const id = document.getElementById('campaign-id').value || null;
-  const name = document.getElementById('campaign-name').value.trim();
-  if (!name) { Utils.toast('Nombre requerido', 'error'); return; }
-  const data = {
-    name,
-    description: document.getElementById('campaign-desc').value.trim(),
-    startDate: document.getElementById('campaign-start').value,
-    endDate: document.getElementById('campaign-end').value,
-    status: id ? campaigns.find(c => c.id === id)?.status || 'borrador' : 'borrador'
-  };
-  await DB.saveCampaign(data, id);
-  Utils.toast('Campaña guardada', 'success');
-  closeModal('modal-campaign');
-  renderCampaigns();
-};
-
-window.activateCampaign = async function(id) {
-  // Deactivate any other active campaign first
-  for (const c of campaigns.filter(x => x.status === 'activa')) {
-    await DB.saveCampaign({ status: 'completada' }, c.id);
-  }
-  await DB.saveCampaign({ status: 'activa' }, id);
-  Utils.toast('Campaña activada', 'success');
-  renderCampaigns();
-};
-
-window.closeCampaign = async function() {
-  if (!activeCampaign) return;
-  if (!Utils.confirm('¿Cerrar esta campaña? Se marcará como completada.')) return;
-  await DB.saveCampaign({ status: 'completada' }, activeCampaign.id);
-  Utils.toast('Campaña cerrada', 'success');
-  renderCampaigns();
-};
-
-window.deleteCampaignConfirm = async function(id) {
-  if (!Utils.confirm('¿Eliminar esta campaña y todas sus asignaciones?')) return;
-  await DB.deleteCampaign(id);
-  Utils.toast('Campaña eliminada', 'success');
-  renderCampaigns();
-};
-
-// ── Campaign Auto Assign ───────────────────────────────────────────────────────
-window.openAutoAssignCampaign = async function() {
-  if (!activeCampaign) return;
-
-  // Sort territories sequentially
-  const sortedTerrs = [...territories].sort((a, b) =>
-    String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
-
-  // Get combined history (regular + campaign) for each coordinator
-  const historyByCoord = {};
-  for (const c of coordinators) {
-    const regular = await DB.getAssignments({ coordinatorId: c.id });
-    const campaign = await DB.getCoordinatorCampaignHistory(c.id);
-    const allWorked = [...new Set([...regular.map(a => a.territoryId), ...campaign.map(a => a.territoryId)])];
-    historyByCoord[c.id] = allWorked;
-  }
-
-  const activeCoords = coordinators.filter(c => (c.maxTerr ?? settings.maxTerr ?? 8) > 0);
-
-  // Find next start index for each coordinator
-  const coordNextIdx = {};
-  activeCoords.forEach(c => {
-    const worked = historyByCoord[c.id] || [];
-    if (!worked.length) {
-      coordNextIdx[c.id] = 0;
-    } else {
-      let maxIdx = -1;
-      worked.forEach(terrId => {
-        const idx = sortedTerrs.findIndex(t => t.id === terrId);
-        if (idx > maxIdx) maxIdx = idx;
-      });
-      coordNextIdx[c.id] = maxIdx >= sortedTerrs.length - 1 ? 0 : maxIdx + 1;
-    }
-  });
-
-  // Sort coordinators by next start index
-  activeCoords.sort((a, b) => coordNextIdx[a.id] - coordNextIdx[b.id]);
-
-  campaignAutoAssignPlan = [];
-  let usedTerrIds = new Set();
-
-  activeCoords.forEach(c => {
-    const max = coordMax(c.id);
-    if (max === 0) return;
-    const startIdx = coordNextIdx[c.id];
-    const block = [];
-
-    for (let i = startIdx; i < sortedTerrs.length && block.length < max; i++) {
-      if (!usedTerrIds.has(sortedTerrs[i].id)) {
-        block.push(sortedTerrs[i]);
-        usedTerrIds.add(sortedTerrs[i].id);
-      }
-    }
-    if (block.length < max && startIdx > 0) {
-      for (let i = 0; i < startIdx && block.length < max; i++) {
-        if (!usedTerrIds.has(sortedTerrs[i].id)) {
-          block.push(sortedTerrs[i]);
-          usedTerrIds.add(sortedTerrs[i].id);
-        }
-      }
-    }
-
-    if (!block.length) return;
-    const isRotated = coordNextIdx[c.id] > 0;
-    campaignAutoAssignPlan.push({ coordinatorId: c.id, territories: block, isRotated });
-  });
-
-  if (!campaignAutoAssignPlan.length) { Utils.toast('Sin territorios disponibles', 'info'); return; }
-
-  document.getElementById('campaign-assign-preview').innerHTML = campaignAutoAssignPlan.map(plan => {
-    const coord = coordinators.find(c => c.id === plan.coordinatorId);
-    return `<div style="padding:0.8rem 0;border-bottom:1px solid var(--border)">
-      <div style="font-weight:700;margin-bottom:0.4rem;display:flex;align-items:center;gap:0.5rem;">
-        ${coord?.name}
-        ${plan.isRotated ? '<span class="badge badge-blue">🔄 Rotado</span>' : '<span class="badge badge-gray">Inicio</span>'}
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.3rem;">
-        ${plan.territories.map(t => `<span class="badge badge-blue">${t.number}</span>`).join('')}
-      </div>
-      <div class="text-muted text-sm">${plan.territories.length} territorio(s) — ${plan.territories[0]?.number} al ${plan.territories[plan.territories.length-1]?.number}</div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('modal-campaign-assign').classList.add('open');
-};
-
-window.doAutoAssignCampaign = async function() {
-  if (!activeCampaign || !campaignAutoAssignPlan.length) return;
-
-  // Clear existing assignments for this campaign
-  await DB.deleteCampaignAssignments(activeCampaign.id);
-
-  // Create new assignments
-  const assignments = [];
-  campaignAutoAssignPlan.forEach(plan => {
-    plan.territories.forEach(t => {
-      assignments.push({
-        campaignId: activeCampaign.id,
-        campaignName: activeCampaign.name,
-        territoryId: t.id,
-        territoryNumber: t.number,
-        coordinatorId: plan.coordinatorId,
-        status: 'pendiente',
-        completedDate: null
-      });
-    });
-  });
-
-  await DB.bulkSaveCampaignAssignments(assignments);
-  campaignAssignments = await DB.getCampaignAssignments(activeCampaign.id);
-  Utils.toast(`✅ ${assignments.length} territorios asignados`, 'success');
-  closeModal('modal-campaign-assign');
-  renderCampaigns();
-};
-
-// ── Email Report ───────────────────────────────────────────────────────────────
-window.sendDailyReport = async function() {
-  const reportSettings = await DB.getReportSettings();
-  if (!reportSettings.emailjsServiceId || !reportSettings.emailjsPublicKey) {
-    if (Utils.confirm('Primero configura los datos de EmailJS. ¿Abrir configuración?')) {
-      openReportSettings();
-    }
-    return;
-  }
-  if (!activeCampaign) { Utils.toast('No hay campaña activa', 'error'); return; }
-
-  const completed = campaignAssignments.filter(a => a.status === 'completado').length;
-  const total = campaignAssignments.length;
-  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-  // Build coordinator breakdown
-  const breakdown = coordinators.map(c => {
-    const myA = campaignAssignments.filter(a => a.coordinatorId === c.id);
-    if (!myA.length) return '';
-    const comp = myA.filter(a => a.status === 'completado').length;
-    return `${c.name}: ${comp}/${myA.length}`;
-  }).filter(Boolean).join('\n');
-
-  // Today's completions
-  const today = Utils.today();
-  const todayCompleted = campaignAssignments.filter(a => a.completedDate === today);
-
-  try {
-    // Load EmailJS
-    if (!window.emailjs) {
-      await new Promise((resolve) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
-        s.onload = resolve;
-        document.head.appendChild(s);
-      });
-      window.emailjs.init(reportSettings.emailjsPublicKey);
-    }
-
-    const emails = (reportSettings.emails || '').split(',').map(e => e.trim()).filter(Boolean);
-    for (const email of emails) {
-      await window.emailjs.send(reportSettings.emailjsServiceId, reportSettings.emailjsTemplateId, {
-        to_email: email,
-        campaign_name: activeCampaign.name,
-        progress: `${completed}/${total} (${pct}%)`,
-        today_completed: todayCompleted.length > 0 ? todayCompleted.map(a => a.territoryNumber).join(', ') : 'Ninguno hoy',
-        breakdown,
-        report_date: new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-      });
-    }
-    Utils.toast(`Reporte enviado a ${emails.length} destinatario(s)`, 'success');
-  } catch (err) {
-    Utils.toast('Error enviando reporte: ' + err.message, 'error');
-  }
-};
-
-window.openReportSettings = async function() {
-  const s = await DB.getReportSettings();
-  document.getElementById('report-emails').value = s.emails || '';
-  document.getElementById('report-service-id').value = s.emailjsServiceId || '';
-  document.getElementById('report-template-id').value = s.emailjsTemplateId || '';
-  document.getElementById('report-public-key').value = s.emailjsPublicKey || '';
-  document.getElementById('modal-report-settings').classList.add('open');
-};
-
-window.saveReportSettings = async function() {
-  await DB.saveReportSettings({
-    emails: document.getElementById('report-emails').value.trim(),
-    emailjsServiceId: document.getElementById('report-service-id').value.trim(),
-    emailjsTemplateId: document.getElementById('report-template-id').value.trim(),
-    emailjsPublicKey: document.getElementById('report-public-key').value.trim()
-  });
-  Utils.toast('Configuración guardada', 'success');
-  closeModal('modal-report-settings');
-};
-
-// Close modal on overlay click
-document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  addresses = await DB.getAddresses(currentTerrId);
+  closeModals();
+  renderDoorList();
+  Utils.toast('Guardado', 'success');
 });
 
-// Make Auth available globally for logout button
+document.getElementById('clear-obs').addEventListener('click', () => {
+  document.getElementById('edit-obs').value = '';
+  document.querySelectorAll('.obs-preset-btn').forEach(b => b.classList.remove('active'));
+});
+document.getElementById('clear-visit').addEventListener('click', () => { document.getElementById('edit-visit').value = ''; });
+
+function renderPhoneList() {
+  document.getElementById('phone-count').textContent = `${phoneRecords.length} registros`;
+  if (!phoneRecords.length) { document.getElementById('phone-list').innerHTML = `<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;">Sin registros — usa el botón + Agregar</div>`; return; }
+  document.getElementById('phone-list').innerHTML = phoneRecords.map(r => `
+    <div class="phone-row">
+      <div style="font-weight:700;font-size:0.85rem;min-width:60px;">${r.address}</div>
+      <div style="font-size:0.82rem;color:var(--muted);min-width:100px;">${r.name || '—'}</div>
+      <div style="font-family:var(--font-mono);font-size:0.82rem;min-width:110px;">${r.phone || '—'}</div>
+      <div style="flex:1;">${r.callResult ? `<span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:20px;font-size:0.72rem;background:var(--accent-light);color:var(--accent);font-weight:600;">${r.callResult}</span>` : ''}${r.date ? `<span style="font-size:0.75rem;color:var(--muted);margin-left:0.3rem;">${Utils.fmtDate(r.date)}</span>` : ''}</div>
+      <div style="display:flex;gap:0.3rem;">
+        <button class="edit-btn edit-phone-btn" data-id="${r.id}" title="Editar">✏️</button>
+        <button class="edit-btn del-phone-btn" data-id="${r.id}" title="Eliminar" style="color:var(--red);border-color:#fecdca;">🗑</button>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('.edit-phone-btn').forEach(btn => btn.addEventListener('click', () => openEditPhone(btn.dataset.id)));
+  document.querySelectorAll('.del-phone-btn').forEach(btn => btn.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar este registro telefónico?')) return;
+    await DB.deletePhoneRecord(currentTerrId, btn.dataset.id);
+    phoneRecords = await DB.getPhoneRecords(currentTerrId);
+    renderPhoneList();
+    Utils.toast('Registro eliminado', 'success');
+  }));
+}
+
+function openEditPhone(id) {
+  editingPhoneId = id || null;
+  const r = id ? phoneRecords.find(x => x.id === id) : null;
+  document.getElementById('phone-modal-title').textContent = id ? 'Editar Registro' : 'Agregar Registro';
+  document.getElementById('edit-ph-addr').value = r?.address || '';
+  document.getElementById('edit-ph-name').value = r?.name || '';
+  document.getElementById('edit-ph-num').value = r?.phone || '';
+  document.getElementById('edit-ph-date').value = r?.date || Utils.today();
+  document.getElementById('edit-ph-result').value = r?.callResult || '';
+  const ps = (settings.phoneStatuses?.length) ? settings.phoneStatuses : ['No en casa','Línea desconectada','Persona ocupada','Plática','No interesado','Volvió a llamar','Número equivocado'];
+  document.getElementById('phone-result-btns').innerHTML = ps.map(s => `<button type="button" class="preset-btn ph-preset-btn${s === r?.callResult ? ' active' : ''}" data-val="${s}">${s}</button>`).join('');
+  document.querySelectorAll('.ph-preset-btn').forEach(btn => btn.addEventListener('click', () => {
+    document.getElementById('edit-ph-result').value = btn.dataset.val;
+    document.querySelectorAll('.ph-preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }));
+  document.getElementById('modal-phone').classList.add('open');
+}
+
+document.getElementById('save-phone').addEventListener('click', async () => {
+  const data = { address: document.getElementById('edit-ph-addr').value.trim(), name: document.getElementById('edit-ph-name').value.trim(), phone: document.getElementById('edit-ph-num').value.trim(), date: document.getElementById('edit-ph-date').value, callResult: document.getElementById('edit-ph-result').value.trim(), order: editingPhoneId ? phoneRecords.find(r => r.id === editingPhoneId)?.order ?? phoneRecords.length : phoneRecords.length };
+  if (!data.address) { Utils.toast('Dirección requerida', 'error'); return; }
+  await DB.savePhoneRecord(currentTerrId, data, editingPhoneId);
+  phoneRecords = await DB.getPhoneRecords(currentTerrId);
+  closeModals(); renderPhoneList(); Utils.toast('Guardado', 'success');
+});
+
+document.getElementById('clear-ph-result').addEventListener('click', () => { document.getElementById('edit-ph-result').value = ''; document.querySelectorAll('.ph-preset-btn').forEach(b => b.classList.remove('active')); });
+
+function activateTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+}
+document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
+
+function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); }
+['cls-addr','cls-addr-2','cls-phone','cls-phone-2'].forEach(id => document.getElementById(id).addEventListener('click', closeModals));
+document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', e => { if (e.target === el) closeModals(); }));
+
+document.getElementById('btn-add-phone').addEventListener('click', () => openEditPhone(null));
+document.getElementById('btn-back').addEventListener('click', () => {
+  document.getElementById('view-detail').style.display = 'none';
+  if (returnToCampaign) {
+    returnToCampaign = false;
+    document.getElementById('view-campaign').style.display = 'block';
+  } else {
+    document.getElementById('view-dashboard').style.display = 'block';
+  }
+  window.scrollTo(0, 0);
+});
+document.getElementById('btn-share').addEventListener('click', () => { if (!currentTerrId) return; const url = `${window.location.origin}/view/?t=${currentTerrId}`; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => Utils.toast('Enlace copiado', 'success')); else prompt('Enlace:', url); });
+document.getElementById('btn-back-campaign').addEventListener('click', () => { document.getElementById('view-campaign').style.display = 'none'; document.getElementById('view-dashboard').style.display = 'block'; window.scrollTo(0, 0); });
+document.getElementById('btn-view-campaign').addEventListener('click', () => openCampaignView());
+
+// ── Campaign Functions ────────────────────────────────────────────────────────
+let activeCampaign = null, myCampaignAssignments = [], coordProfileId = null;
+
+async function loadActiveCampaign(coordId) {
+  coordProfileId = coordId;
+  activeCampaign = await DB.getActiveCampaign();
+  if (!activeCampaign) {
+    document.getElementById('campaign-banner').style.display = 'none';
+    return;
+  }
+  myCampaignAssignments = await DB.getCampaignAssignmentsForCoordinator(activeCampaign.id, coordId);
+  if (!myCampaignAssignments.length) {
+    document.getElementById('campaign-banner').style.display = 'none';
+    return;
+  }
+
+  // Show banner
+  document.getElementById('campaign-banner').style.display = 'block';
+  document.getElementById('camp-banner-name').textContent = activeCampaign.name;
+  document.getElementById('camp-banner-dates').textContent = `${Utils.fmtDate(activeCampaign.startDate)} — ${Utils.fmtDate(activeCampaign.endDate)}`;
+
+  const completed = myCampaignAssignments.filter(a => a.status === 'completado').length;
+  const total = myCampaignAssignments.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  document.getElementById('camp-my-progress').textContent = `${completed} / ${total} completados`;
+  document.getElementById('camp-my-pct').textContent = `${pct}%`;
+  document.getElementById('camp-my-bar').style.width = `${pct}%`;
+}
+
+function openCampaignView() {
+  if (!activeCampaign) return;
+  document.getElementById('camp-view-title').textContent = `🏳️ ${activeCampaign.name}`;
+  renderCampaignTerritories();
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-campaign').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function renderCampaignTerritories() {
+  const completed = myCampaignAssignments.filter(a => a.status === 'completado').length;
+  const total = myCampaignAssignments.length;
+
+  let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:1rem;box-shadow:var(--shadow-sm);">
+    <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;margin-bottom:0.3rem;">${activeCampaign.name}</div>
+    ${activeCampaign.description ? `<div class="text-sm text-muted" style="margin-bottom:0.8rem;">${activeCampaign.description}</div>` : ''}
+    <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:0.3rem;">
+      <span>${completed} / ${total} territorios completados</span>
+      <span>${total > 0 ? Math.round((completed/total)*100) : 0}%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${total > 0 ? Math.round((completed/total)*100) : 0}%;background:${completed===total?'var(--green)':'var(--accent)'}"></div></div>
+  </div>`;
+
+  html += myCampaignAssignments.map(a => {
+    const isComplete = a.status === 'completado';
+    const terr = myTerritories.find(t => t.id === a.territoryId) || { id: a.territoryId, number: a.territoryNumber, streets: '' };
+    return `<div style="background:${isComplete ? 'var(--green-light)' : 'var(--surface)'};border:1px solid ${isComplete ? '#a9efd1' : 'var(--border)'};border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.7rem;box-shadow:var(--shadow-sm);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;">Territorio ${a.territoryNumber}</div>
+          ${terr.streets ? `<div class="text-sm text-muted">${terr.streets}</div>` : ''}
+          ${isComplete ? `<div class="text-sm" style="color:var(--green);margin-top:0.2rem;">✅ Completado ${a.completedDate ? Utils.fmtDate(a.completedDate) : ''}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm camp-view-terr-btn" data-terrid="${a.territoryId}" data-terrnum="${a.territoryNumber}">📋 Ver Territorio</button>
+          ${terr.mapLink ? `<a href="${terr.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭 Navegar</a>` : ''}
+          <button class="btn ${isComplete ? 'btn-secondary' : 'btn-green'} btn-sm camp-complete-btn" data-id="${a.id}" data-complete="${isComplete}">
+            ${isComplete ? '↩ Desmarcar' : '✅ Marcar Completado'}
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('camp-terr-list').innerHTML = html;
+
+  // Ver Territorio from campaign
+  document.querySelectorAll('.camp-view-terr-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await openTerritoryFromCampaign(btn.dataset.terrid, btn.dataset.terrnum);
+    });
+  });
+
+  document.querySelectorAll('.camp-complete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const isComplete = btn.dataset.complete === 'true';
+      btn.disabled = true;
+      btn.textContent = '...';
+      await DB.markCampaignTerritoryComplete(id, !isComplete);
+      // Update local state
+      const a = myCampaignAssignments.find(x => x.id === id);
+      if (a) {
+        a.status = !isComplete ? 'completado' : 'pendiente';
+        a.completedDate = !isComplete ? Utils.today() : null;
+      }
+      // Refresh banner counts
+      await loadActiveCampaign(coordProfileId);
+      renderCampaignTerritories();
+      Utils.toast(!isComplete ? '✅ Territorio completado' : 'Desmarcado', 'success');
+    });
+  });
+}
+
+// Opens a territory from the campaign view — fetches full territory data
+let returnToCampaign = false;
+
+async function openTerritoryFromCampaign(terrId, terrNumber) {
+  returnToCampaign = true;
+  // Fetch full territory data since it may not be in myTerritories
+  let t = myTerritories.find(x => x.id === terrId);
+  if (!t) {
+    t = await DB.getTerritory(terrId);
+  }
+  if (!t) {
+    Utils.toast('Territorio no encontrado', 'error');
+    return;
+  }
+  // Temporarily add to myTerritories if not there so openTerritory works
+  if (!myTerritories.find(x => x.id === terrId)) {
+    myTerritories.push(t);
+  }
+  // Hide campaign view before opening territory
+  document.getElementById('view-campaign').style.display = 'none';
+  await openTerritory(terrId);
+}
+
 window.Auth = Auth;
 </script>
 </body>
