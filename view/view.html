@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Territorio — Vista Publicador</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
+<style>
+  body { background: var(--bg); }
+  .pub-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.8rem 1.2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .pub-logo { font-family: var(--font-head); font-weight: 800; font-size: 1rem; }
+  .pub-logo span { color: var(--accent); }
+  .pub-content { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+  .pub-territory-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem; margin-bottom: 1.5rem; }
+  .pub-territory-header h1 { font-family: var(--font-head); font-weight: 800; font-size: 1.8rem; }
+  .pub-map { width: 100%; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); margin-bottom: 1rem; background: #f3f4f8; }
+  .pub-map img { width: 100%; height: auto; display: block; object-fit: contain; }
+  .pub-map-placeholder { height: 160px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 3rem; }
+  .pub-nav-btn { display: block; width: 100%; padding: 0.9rem; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-family: var(--font-head); font-weight: 700; font-size: 1rem; text-align: center; cursor: pointer; margin-bottom: 1rem; text-decoration: none; }
+  .pub-nav-btn:hover { background: #3a7de8; text-decoration: none; color: #fff; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1rem; }
+  .info-item { background: var(--surface2); border-radius: 8px; padding: 0.7rem 0.9rem; }
+  .info-label { font-family: var(--font-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .info-value { font-weight: 600; font-size: 0.9rem; margin-top: 0.2rem; }
+  .address-table { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .address-table table { width: 100%; border-collapse: collapse; }
+  .address-table th { background: var(--surface2); font-family: var(--font-mono); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 0.6rem 0.9rem; text-align: left; border-bottom: 1px solid var(--border); }
+  .address-table td { padding: 0.6rem 0.9rem; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+  .address-table tr:last-child td { border-bottom: none; }
+  .address-table tr.visited td { background: rgba(54,211,153,0.04); }
+  .obs-tag { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.72rem; background: rgba(245,197,24,0.12); color: var(--yellow); font-family: var(--font-mono); }
+  .start-point { background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.2); border-radius: 8px; padding: 0.7rem 0.9rem; margin-bottom: 1rem; font-size: 0.85rem; }
+  .start-point strong { color: var(--accent); }
+  .not-found { text-align: center; padding: 4rem 1rem; }
+  .not-found .icon { font-size: 4rem; margin-bottom: 1rem; }
+  .not-found h2 { font-family: var(--font-head); margin-bottom: 0.5rem; }
+  .not-found p { color: var(--muted); font-size: 0.88rem; }
+  @media(max-width:500px) { .info-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="pub-header">
+  <span class="pub-logo">Terri<span>·</span>OS</span>
+  <div class="flex gap-1 items-center">
+    <span class="badge badge-gray" data-i18n="publicInstructions" style="font-size:0.65rem">Vista de solo lectura</span>
+    <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
+  </div>
+</div>
+
+<div id="loading-screen" class="loading-screen" style="height:calc(100vh - 56px)">
+  <div class="spinner"></div>
+  <span data-i18n="loading">Cargando territorio...</span>
+</div>
+
+<div id="app" class="pub-content" style="display:none">
+
+  <!-- Not found -->
+  <div id="not-found" class="not-found" style="display:none">
+    <div class="icon">🗺️</div>
+    <h2>Territorio no encontrado</h2>
+    <p>El enlace puede haber expirado o el territorio no existe.</p>
+  </div>
+
+  <!-- Territory view -->
+  <div id="terr-view" style="display:none">
+
+    <div class="pub-territory-header">
+      <h1 id="pub-terr-title">Territorio —</h1>
+      <p class="text-muted text-sm" id="pub-terr-streets" style="margin-top:0.3rem"></p>
+
+      <div id="pub-map" class="pub-map" style="display:none;margin-top:1rem;"></div>
+
+      <div class="info-grid" style="margin-top:1rem;" id="pub-info-grid"></div>
+
+      <div id="pub-start-point" class="start-point" style="display:none">
+        ⭐ <strong>Punto de inicio:</strong> <span id="pub-start-text"></span>
+      </div>
+
+      <a id="pub-nav-btn" href="#" target="_blank" class="pub-nav-btn" style="display:none">
+        🧭 <span data-i18n="navHome">Abrir en Google Maps</span>
+      </a>
+
+      <div id="pub-notes" class="text-sm text-muted" style="display:none;margin-top:0.5rem;"></div>
+    </div>
+
+    <!-- Addresses -->
+    <div class="address-table">
+      <div style="padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:var(--font-head);font-weight:700;" data-i18n="publicViewTitle">Registro de Casa en Casa</span>
+        <span class="text-muted text-sm" id="pub-addr-count"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="address">Dirección</th>
+              <th data-i18n="street">Calle</th>
+              <th data-i18n="observation">Observación</th>
+              <th data-i18n="comment">Comentario</th>
+              <th data-i18n="visitDate">Fecha Visita</th>
+            </tr>
+          </thead>
+          <tbody id="pub-addr-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/assets/i18n.js"></script>
+<script type="module">
+import { DB, Utils } from '/assets/firebase2.js';
+
+window.addEventListener('DOMContentLoaded', () => Lang.init());
+
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const terrId = params.get('t');
+
+  console.log('Territory ID from URL:', terrId);
+
+  if (!terrId) { showNotFound(); return; }
+
+  try {
+    const [territory, addresses] = await Promise.all([
+      DB.getTerritory(terrId),
+      DB.getAddresses(terrId)
+    ]);
+
+    console.log('Territory data:', territory);
+    console.log('Addresses count:', addresses.length);
+
+    if (!territory) { showNotFound(); return; }
+
+    // Update page title
+    document.title = `Territorio ${territory.number} — TerriOS`;
+
+    // Territory header
+    document.getElementById('pub-terr-title').textContent = `Territorio ${territory.number}`;
+    document.getElementById('pub-terr-streets').textContent = territory.streets || '';
+
+    // Map
+    if (territory.mapUrl) {
+      const mapDiv = document.getElementById('pub-map');
+      mapDiv.innerHTML = `<img src="${territory.mapUrl}" alt="Mapa Territorio ${territory.number}">`;
+      mapDiv.style.display = 'block';
+    }
+
+    // Info grid
+    document.getElementById('pub-info-grid').innerHTML = `
+      <div class="info-item">
+        <div class="info-label" data-i18n="expiresDate">Expira</div>
+        <div class="info-value">${territory.currentAssign?.expiresDate ? Utils.fmtDate(territory.currentAssign.expiresDate) : '—'}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label" data-i18n="addresses">Direcciones</div>
+        <div class="info-value">${addresses.length}</div>
+      </div>`;
+
+    // Start point
+    if (territory.startPoint) {
+      document.getElementById('pub-start-text').textContent = territory.startPoint;
+      document.getElementById('pub-start-point').style.display = 'block';
+    }
+
+    // Nav link
+    if (territory.mapLink) {
+      const btn = document.getElementById('pub-nav-btn');
+      btn.href = territory.mapLink;
+      btn.style.display = 'block';
+    }
+
+    // Notes
+    if (territory.notes) {
+      document.getElementById('pub-notes').textContent = territory.notes;
+      document.getElementById('pub-notes').style.display = 'block';
+    }
+
+    // Address table
+    document.getElementById('pub-addr-count').textContent = `${addresses.length} ${Lang.t('addresses')}`;
+    document.getElementById('pub-addr-table').innerHTML = addresses.map(a => `
+      <tr class="${a.visitDate ? 'visited' : ''}">
+        <td><strong>${a.address}</strong></td>
+        <td class="text-muted">${a.street || '—'}</td>
+        <td>${a.observation ? `<span class="obs-tag">${a.observation}</span>` : '—'}</td>
+        <td>${a.comment || '—'}</td>
+        <td>${a.visitDate ? Utils.fmtDate(a.visitDate) : '—'}</td>
+      </tr>`).join('') || `<tr><td colspan="5" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noAddresses')}</td></tr>`;
+
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('terr-view').style.display = 'block';
+    Lang.apply();
+
+  } catch (err) {
+    console.error(err);
+    showNotFound();
+  }
+}
+
+function showNotFound() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('not-found').style.display = 'block';
+}
+
+init();
+</script>
+</body>
+</html>

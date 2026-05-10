@@ -9,8 +9,8 @@ const firebaseConfig = {
 };
 
 // Firebase imports via CDN modules
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
@@ -40,16 +40,34 @@ const Auth = {
   },
 
   async createCoordinator(email, password, name, maxTerr) {
-    // Get current admin's ID token to authenticate the request
-    const token = await auth.currentUser.getIdToken();
-    const response = await fetch('/.netlify/functions/createCoordinator', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, maxTerr, callerToken: token })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Error creating coordinator');
-    return data;
+    // Save current admin user reference
+    const adminUser = auth.currentUser;
+    
+    // Create a completely separate Firebase app instance
+    const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
+    const secondaryAuth = getAuth(secondaryApp);
+    
+    try {
+      // Create user in secondary app - does NOT affect main auth session
+      const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      const newUid = cred.user.uid;
+      
+      // Sign out of secondary app immediately
+      await signOut(secondaryAuth);
+      
+      // Save coordinator profile to Firestore using main app (admin still logged in)
+      await setDoc(doc(db, 'users', newUid), {
+        name, email, role: 'coordinator',
+        maxTerr: maxTerr || 8,
+        active: true,
+        createdAt: serverTimestamp()
+      });
+      
+      return { uid: newUid };
+    } finally {
+      // Clean up secondary app
+      await deleteApp(secondaryApp);
+    }
   },
 
   onReady(callback) {
@@ -223,6 +241,104 @@ const DB = {
 
   async saveSettings(data) {
     await setDoc(doc(db, 'settings', 'global'), data, { merge: true });
+  },
+
+  // ── Campaigns ─────────────────────────────────────────────────────────────
+  async getCampaigns() {
+    const snap = await getDocs(collection(db, 'campaigns'));
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return results.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+  },
+
+  async getCampaign(id) {
+    const snap = await getDoc(doc(db, 'campaigns', id));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  },
+
+  async saveCampaign(data, id = null) {
+    if (id) {
+      await updateDoc(doc(db, 'campaigns', id), { ...data, updatedAt: serverTimestamp() });
+      return id;
+    } else {
+      const ref = await addDoc(collection(db, 'campaigns'), { ...data, createdAt: serverTimestamp() });
+      return ref.id;
+    }
+  },
+
+  async deleteCampaign(id) {
+    // Delete all assignments for this campaign first
+    const snap = await getDocs(query(collection(db, 'campaignAssignments'), where('campaignId', '==', id)));
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    await deleteDoc(doc(db, 'campaigns', id));
+  },
+
+  // Campaign assignments
+  async getCampaignAssignments(campaignId) {
+    const snap = await getDocs(query(collection(db, 'campaignAssignments'), where('campaignId', '==', campaignId)));
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return results.sort((a, b) => String(a.territoryNumber).localeCompare(String(b.territoryNumber), undefined, { numeric: true }));
+  },
+
+  async getCampaignAssignmentsForCoordinator(campaignId, coordinatorId) {
+    const snap = await getDocs(query(collection(db, 'campaignAssignments'), where('campaignId', '==', campaignId), where('coordinatorId', '==', coordinatorId)));
+    const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return results.sort((a, b) => String(a.territoryNumber).localeCompare(String(b.territoryNumber), undefined, { numeric: true }));
+  },
+
+  async saveCampaignAssignment(data, id = null) {
+    if (id) {
+      await updateDoc(doc(db, 'campaignAssignments', id), data);
+    } else {
+      await addDoc(collection(db, 'campaignAssignments'), { ...data, createdAt: serverTimestamp() });
+    }
+  },
+
+  async bulkSaveCampaignAssignments(assignments) {
+    const batch = writeBatch(db);
+    assignments.forEach(a => {
+      const ref = doc(collection(db, 'campaignAssignments'));
+      batch.set(ref, { ...a, createdAt: new Date().toISOString() });
+    });
+    await batch.commit();
+  },
+
+  async deleteCampaignAssignments(campaignId) {
+    const snap = await getDocs(query(collection(db, 'campaignAssignments'), where('campaignId', '==', campaignId)));
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  },
+
+  async markCampaignTerritoryComplete(assignmentId, completed) {
+    await updateDoc(doc(db, 'campaignAssignments', assignmentId), {
+      status: completed ? 'completado' : 'pendiente',
+      completedDate: completed ? new Date().toISOString().split('T')[0] : null
+    });
+  },
+
+  // Get campaign history for a coordinator (for rotation logic)
+  async getCoordinatorCampaignHistory(coordinatorId) {
+    const snap = await getDocs(query(collection(db, 'campaignAssignments'), where('coordinatorId', '==', coordinatorId)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  // Get active campaign
+  async getActiveCampaign() {
+    const snap = await getDocs(query(collection(db, 'campaigns'), where('status', '==', 'activa')));
+    if (snap.empty) return null;
+    return { id: snap.docs[0].id, ...snap.docs[0].data() };
+  },
+
+  // Email report recipients
+  async getReportSettings() {
+    const snap = await getDoc(doc(db, 'settings', 'reports'));
+    return snap.exists() ? snap.data() : { emails: [], emailjsServiceId: '', emailjsTemplateId: '', emailjsPublicKey: '' };
+  },
+
+  async saveReportSettings(data) {
+    await setDoc(doc(db, 'settings', 'reports'), data, { merge: true });
   }
 };
 
