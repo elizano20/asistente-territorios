@@ -835,14 +835,14 @@ window.closeModal = function(id) { document.getElementById(id)?.classList.remove
 function renderDashboard() {
   const total = territories.length;
   const assigned = territories.filter(t => t.state === 'Asignado').length;
-  const available = territories.filter(t => t.state === 'Disponible').length;
+  const available = territories.filter(t => t.state === 'Disponible' || t.state === 'Devuelto').length;
   const expired = territories.filter(t => t.state === 'Vencido').length;
   const returned = territories.filter(t => t.state === 'Devuelto').length;
 
   document.getElementById('dash-stats').innerHTML = `
     <div class="stat-card stat-blue"><div class="stat-label" data-i18n="dashTotal">${Lang.t('dashTotal')}</div><div class="stat-value">${total}</div></div>
     <div class="stat-card stat-yellow"><div class="stat-label">${Lang.t('dashAssigned')}</div><div class="stat-value">${assigned}</div></div>
-    <div class="stat-card stat-green"><div class="stat-label">${Lang.t('dashAvailable')}</div><div class="stat-value">${available}</div></div>
+    <div class="stat-card stat-green"><div class="stat-label">${Lang.t('dashAvailable')} + Devueltos</div><div class="stat-value">${available}</div></div>
     <div class="stat-card stat-red"><div class="stat-label">${Lang.t('dashExpired')}</div><div class="stat-value">${expired}</div></div>
     <div class="stat-card stat-muted"><div class="stat-label">${Lang.t('dashReturned')}</div><div class="stat-value">${returned}</div></div>`;
 
@@ -1122,10 +1122,12 @@ function renderTerrChips() {
     const isSel = selectedTerrs.includes(t.id);
     const isAssigned = t.state === 'Asignado';
     const isExp = t.state === 'Vencido';
+    const isAvailable = t.state === 'Disponible' || t.state === 'Devuelto';
     let style = `display:inline-block;padding:0.25rem 0.6rem;border-radius:6px;font-family:var(--font-mono);font-size:0.75rem;cursor:pointer;border:1px solid;transition:all .12s;user-select:none;`;
     if (isAssigned) style += `border-color:var(--border);background:var(--border);color:var(--muted);cursor:not-allowed;opacity:0.5;`;
     else if (isSel) style += `border-color:var(--accent);background:var(--accent);color:#fff;`;
     else if (isExp) style += `border-color:var(--red);color:var(--red);background:transparent;`;
+    else if (t.state === 'Devuelto') style += `border-color:var(--green);color:var(--green);background:var(--green-light);`;
     else style += `border-color:var(--border);background:var(--surface2);color:var(--text);`;
     return `<span style="${style}" onclick="toggleTerrChip('${t.id}')">${t.number}</span>`;
   }).join('');
@@ -1155,7 +1157,7 @@ window.autoSelectTerr = function() {
   const cnt = assignedCount(coordId);
   const canAdd = max - cnt - selectedTerrs.length;
   if (canAdd <= 0) { Utils.toast('El coordinador ya está en su límite', 'error'); return; }
-  const available = territories.filter(t => t.state === 'Disponible' && !selectedTerrs.includes(t.id));
+  const available = territories.filter(t => (t.state === 'Disponible' || t.state === 'Devuelto') && !selectedTerrs.includes(t.id));
   available.slice(0, canAdd).forEach(t => selectedTerrs.push(t.id));
   renderTerrChips();
 };
@@ -1219,9 +1221,9 @@ window.openAutoAssignAll = async function() {
   const sortedTerrs = [...territories].sort((a, b) =>
     String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
 
-  // Get available territories
+  // Get available territories — both Disponible AND Devuelto can be reassigned
   const available = territories
-    .filter(t => t.state === 'Disponible')
+    .filter(t => t.state === 'Disponible' || t.state === 'Devuelto')
     .sort((a, b) => String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
 
   if (!available.length) {
@@ -1291,7 +1293,7 @@ window.openAutoAssignAll = async function() {
     // First pass: from startIdx to end
     for (let i = startIdx; i < sortedTerrs.length && block.length < canAdd; i++) {
       const t = sortedTerrs[i];
-      if (t.state === 'Disponible' && !usedTerrIds.has(t.id)) {
+      if ((t.state === 'Disponible' || t.state === 'Devuelto') && !usedTerrIds.has(t.id)) {
         block.push(t.id);
         usedTerrIds.add(t.id);
       }
@@ -1301,7 +1303,7 @@ window.openAutoAssignAll = async function() {
     if (block.length < canAdd && startIdx > 0) {
       for (let i = 0; i < startIdx && block.length < canAdd; i++) {
         const t = sortedTerrs[i];
-        if (t.state === 'Disponible' && !usedTerrIds.has(t.id)) {
+        if ((t.state === 'Disponible' || t.state === 'Devuelto') && !usedTerrIds.has(t.id)) {
           block.push(t.id);
           usedTerrIds.add(t.id);
         }
