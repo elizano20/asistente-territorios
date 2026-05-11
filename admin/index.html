@@ -613,6 +613,7 @@
               <th style="padding:0.6rem 1rem;font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);text-align:left;">Calle</th>
               <th style="padding:0.6rem 1rem;font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);text-align:left;">Observación</th>
               <th style="padding:0.6rem 1rem;font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);text-align:left;">Comentario</th>
+              <th style="padding:0.6rem 1rem;font-size:0.7rem;font-weight:600;text-transform:uppercase;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);text-align:left;">Fecha Visita</th>
               <th style="padding:0.6rem 0.5rem;background:var(--surface2);border-bottom:1px solid var(--border);"></th>
             </tr>
           </thead>
@@ -622,6 +623,43 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-addr-manager')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Insert Address Modal -->
+<div class="modal-overlay" id="modal-admin-insert">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">+ Insertar Dirección</span>
+      <button class="modal-close" onclick="closeModal('modal-admin-insert')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--surface2);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1rem;font-size:0.82rem;color:var(--muted);">
+        <span id="admin-insert-after-label"></span>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Dirección</label>
+          <input type="text" class="form-control" id="admin-insert-addr" placeholder="Ej: 4700 1/2, 4701 #2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Calle</label>
+          <input type="text" class="form-control" id="admin-insert-street" placeholder="Ej: 58th St">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observación <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+        <input type="text" class="form-control" id="admin-insert-obs" placeholder="Ej: Perro afuera">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Comentario <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+        <input type="text" class="form-control" id="admin-insert-comment">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-admin-insert')">Cancelar</button>
+      <button class="btn btn-green" onclick="saveAdminInsertAddr()">Insertar</button>
     </div>
   </div>
 </div>
@@ -1624,18 +1662,64 @@ function renderAddrManager(filter = '') {
       `${managingAddresses.length} direcciones · <span style="color:var(--red);font-weight:600;">${headerRows.length} filas de encabezado detectadas</span>`;
   }
 
-  document.getElementById('addr-manager-table').innerHTML = filtered.map(a => {
+  if (!filtered.length) {
+    document.getElementById('addr-manager-table').innerHTML = `<tr><td colspan="6" style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;">Sin direcciones</td></tr>`;
+    return;
+  }
+
+  let html = '';
+  filtered.forEach((a, i) => {
+    const realIdx = managingAddresses.findIndex(x => x.id === a.id);
     const isHeader = isHeaderRow(a);
-    return `<tr style="${isHeader ? 'background:#FEF2F2;' : ''}border-bottom:1px solid var(--border-light);">
+
+    // Insert button above each row
+    html += `<tr class="insert-hover-row" data-insert-after="${realIdx - 1}">
+      <td colspan="6" style="padding:0;height:4px;background:transparent;cursor:pointer;transition:all .15s;">
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:0;transition:opacity .15s;" class="insert-hint">
+          <span style="background:var(--accent);color:#fff;border-radius:20px;padding:0.1rem 0.7rem;font-size:0.7rem;white-space:nowrap;">+ Insertar aquí</span>
+        </div>
+      </td>
+    </tr>`;
+
+    html += `<tr style="${isHeader ? 'background:#FEF2F2;' : ''}border-bottom:1px solid var(--border-light);">
       <td style="padding:0.55rem 1rem;font-size:0.85rem;${isHeader ? 'color:var(--red);font-weight:600;' : ''}">${a.address || '—'}</td>
       <td style="padding:0.55rem 1rem;font-size:0.85rem;color:var(--muted);">${a.street || '—'}</td>
       <td style="padding:0.55rem 1rem;font-size:0.82rem;">${a.observation ? `<span style="background:var(--yellow-light);color:var(--yellow);padding:0.1rem 0.4rem;border-radius:4px;font-size:0.72rem;">${a.observation}</span>` : '—'}</td>
       <td style="padding:0.55rem 1rem;font-size:0.82rem;color:var(--muted);">${a.comment || '—'}</td>
-      <td style="padding:0.55rem 0.5rem;text-align:right;">
+      <td style="padding:0.55rem 1rem;font-size:0.82rem;color:var(--muted);">${a.visitDate ? Utils.fmtDate(a.visitDate) : '—'}</td>
+      <td style="padding:0.55rem 0.5rem;text-align:right;white-space:nowrap;">
         <button class="btn btn-danger btn-sm" onclick="deleteAddrRow('${a.id}')" title="Eliminar">🗑</button>
       </td>
     </tr>`;
-  }).join('') || `<tr><td colspan="5" style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;">Sin direcciones</td></tr>`;
+  });
+
+  // Final insert button at end
+  html += `<tr class="insert-hover-row" data-insert-after="${managingAddresses.length - 1}">
+    <td colspan="6" style="padding:0;height:4px;background:transparent;cursor:pointer;transition:all .15s;">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;opacity:0;transition:opacity .15s;" class="insert-hint">
+        <span style="background:var(--accent);color:#fff;border-radius:20px;padding:0.1rem 0.7rem;font-size:0.7rem;white-space:nowrap;">+ Insertar al final</span>
+      </div>
+    </td>
+  </tr>`;
+
+  document.getElementById('addr-manager-table').innerHTML = html;
+
+  // Hover effect + click on insert rows
+  document.querySelectorAll('.insert-hover-row').forEach(row => {
+    row.addEventListener('mouseenter', () => {
+      row.style.background = 'var(--accent-light)';
+      row.style.height = '28px';
+      row.querySelector('.insert-hint').style.opacity = '1';
+    });
+    row.addEventListener('mouseleave', () => {
+      row.style.background = 'transparent';
+      row.style.height = '4px';
+      row.querySelector('.insert-hint').style.opacity = '0';
+    });
+    row.addEventListener('click', () => {
+      openAdminInsertAddr(parseInt(row.dataset.insertAfter));
+    });
+  });
 }
 
 window.filterAddrManager = function() {
@@ -1649,6 +1733,47 @@ window.deleteAddrRow = async function(addrId) {
   managingAddresses = managingAddresses.filter(a => a.id !== addrId);
   renderAddrManager(document.getElementById('addr-manager-search').value.toLowerCase());
   Utils.toast('Fila eliminada', 'success');
+};
+
+let adminInsertAfterIdx = -1;
+
+window.openAdminInsertAddr = function(insertAfterIdx) {
+  adminInsertAfterIdx = insertAfterIdx;
+  const afterAddr = insertAfterIdx >= 0 ? managingAddresses[insertAfterIdx] : null;
+  document.getElementById('admin-insert-after-label').textContent = afterAddr
+    ? `Después de: ${afterAddr.address} ${afterAddr.street || ''}`
+    : 'Al inicio de la lista';
+  document.getElementById('admin-insert-addr').value = '';
+  document.getElementById('admin-insert-street').value = '';
+  document.getElementById('admin-insert-obs').value = '';
+  document.getElementById('admin-insert-comment').value = '';
+  document.getElementById('modal-admin-insert').classList.add('open');
+};
+
+window.saveAdminInsertAddr = async function() {
+  const address = document.getElementById('admin-insert-addr').value.trim();
+  const street = document.getElementById('admin-insert-street').value.trim();
+  if (!address) { Utils.toast('Dirección requerida', 'error'); return; }
+
+  const beforeOrder = adminInsertAfterIdx >= 0 ? (managingAddresses[adminInsertAfterIdx]?.order ?? adminInsertAfterIdx) : -1;
+  const afterOrder = adminInsertAfterIdx + 1 < managingAddresses.length
+    ? (managingAddresses[adminInsertAfterIdx + 1]?.order ?? adminInsertAfterIdx + 1)
+    : beforeOrder + 2;
+  const newOrder = (beforeOrder + afterOrder) / 2;
+
+  const data = {
+    address, street,
+    observation: document.getElementById('admin-insert-obs').value.trim(),
+    comment: document.getElementById('admin-insert-comment').value.trim(),
+    visitDate: '',
+    order: newOrder
+  };
+
+  await DB.saveAddress(managingTerrId, data, null);
+  managingAddresses = await DB.getAddresses(managingTerrId);
+  closeModal('modal-admin-insert');
+  renderAddrManager(document.getElementById('addr-manager-search').value.toLowerCase());
+  Utils.toast('Dirección insertada', 'success');
 };
 
 window.deleteAllHeaderRows = async function() {
