@@ -80,7 +80,10 @@
       <section id="sec-territories" style="display:none">
         <div class="page-header">
           <h2 data-i18n="territories">Territorios</h2>
-          <button class="btn btn-primary" onclick="openTerritoryModal()" data-i18n="createTerritory">Crear Territorio</button>
+          <div class="flex gap-1">
+            <button class="btn btn-secondary" onclick="resetAllDevueltos()" id="btn-reset-devueltos" style="display:none;color:var(--green);border-color:var(--green);">✓ Resetear Devueltos</button>
+            <button class="btn btn-primary" onclick="openTerritoryModal()" data-i18n="createTerritory">Crear Territorio</button>
+          </div>
         </div>
         <div class="page-body">
           <div class="table-toolbar">
@@ -872,6 +875,14 @@ function renderDashboard() {
 function renderTerritories() {
   const q = document.getElementById('terr-search')?.value.toLowerCase() || '';
   const sf = document.getElementById('terr-status-filter')?.value || '';
+
+  // Show reset button only if there are Devuelto territories
+  const devueltoCount = territories.filter(t => t.state === 'Devuelto').length;
+  const resetBtn = document.getElementById('btn-reset-devueltos');
+  if (resetBtn) {
+    resetBtn.style.display = devueltoCount > 0 ? 'inline-flex' : 'none';
+    resetBtn.textContent = `✓ Resetear ${devueltoCount} Devuelto${devueltoCount !== 1 ? 's' : ''}`;
+  }
   const list = territories.filter(t => {
     const matchQ = !q || String(t.number).toLowerCase().includes(q) || t.streets?.toLowerCase().includes(q);
     const matchS = !sf || t.state === sf;
@@ -899,6 +910,7 @@ function renderTerritories() {
           <button class="btn btn-secondary btn-sm" onclick="openTerritoryModal('${t.id}')">✏️</button>
           <button class="btn btn-secondary btn-sm" onclick="openAddressManager('${t.id}')">📋</button>
           ${t.state === 'Asignado' || t.state === 'Vencido' ? `<button class="btn btn-secondary btn-sm" onclick="openReturnModal('${t.id}')">↩</button>` : ''}
+          ${t.state === 'Devuelto' ? `<button class="btn btn-secondary btn-sm" style="color:var(--green);border-color:var(--green);" onclick="markDisponible('${t.id}')" title="Marcar como Disponible">✓ Disponible</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="openShareModal('${t.id}')">🔗</button>
         </div>
         <button class="btn btn-danger btn-sm" onclick="deleteTerritoryConfirm('${t.id}')">🗑</button>
@@ -1030,6 +1042,21 @@ window.saveTerritory = async function() {
     btn.disabled = false;
     btn.innerHTML = Lang.t('save');
   }
+};
+
+window.resetAllDevueltos = async function() {
+  const devueltos = territories.filter(t => t.state === 'Devuelto');
+  if (!devueltos.length) { Utils.toast('No hay territorios devueltos', 'info'); return; }
+  if (!Utils.confirm(`¿Marcar ${devueltos.length} territorio(s) como Disponible?`)) return;
+  await Promise.all(devueltos.map(t => DB.saveTerritory({ state: 'Disponible', currentAssign: null }, t.id)));
+  Utils.toast(`✅ ${devueltos.length} territorios marcados como Disponible`, 'success');
+  await loadAll();
+};
+
+window.markDisponible = async function(terrId) {
+  await DB.saveTerritory({ state: 'Disponible', currentAssign: null }, terrId);
+  Utils.toast('Territorio marcado como Disponible', 'success');
+  await loadAll();
 };
 
 window.deleteTerritoryConfirm = async function(id) {
