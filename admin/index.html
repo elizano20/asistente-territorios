@@ -2175,12 +2175,15 @@ window.printS13 = async function() {
   const allTerritories = [...territories].sort((a, b) =>
     String(a.number).localeCompare(String(b.number), undefined, { numeric: true }));
 
-  // Group assignments by territory
+  // Group assignments by territory, resolve coordinator name
   const byTerritory = {};
   allTerritories.forEach(t => { byTerritory[t.id] = []; });
   allAssignments.forEach(a => {
-    if (byTerritory[a.territoryId]) {
-      byTerritory[a.territoryId].push(a);
+    if (byTerritory[a.territoryId] !== undefined) {
+      // Resolve coordinator name from coordinators array
+      const coord = coordinators.find(c => c.id === a.coordinatorId);
+      const name = coord ? coord.name : (a.coordinatorName || a.coordinatorId || '—');
+      byTerritory[a.territoryId].push({ ...a, resolvedName: name });
     }
   });
 
@@ -2189,13 +2192,10 @@ window.printS13 = async function() {
     byTerritory[t.id].sort((a, b) => (a.assignedDate || '').localeCompare(b.assignedDate || ''));
   });
 
-  // Find max rows needed
-  const maxRows = Math.max(...allTerritories.map(t => byTerritory[t.id].length), 1);
+  // Find max rows needed across all territories (minimum 3 for blank rows)
+  const maxRows = Math.max(...allTerritories.map(t => byTerritory[t.id].length), 3);
 
-  // Build HTML for print
-  const colWidth = Math.max(80, Math.floor(700 / Math.min(allTerritories.length, 8)));
-
-  // Split territories into groups of 8 per page row
+  // Split territories into groups of 8 per row
   const chunkSize = 8;
   const chunks = [];
   for (let i = 0; i < allTerritories.length; i += chunkSize) {
@@ -2218,7 +2218,7 @@ window.printS13 = async function() {
       tablesHtml += `<tr class="name-row">`;
       chunk.forEach(t => {
         const a = byTerritory[t.id][row];
-        tablesHtml += `<td colspan="2" class="name-cell">${a ? (a.coordinatorName || '—') : ''}</td>`;
+        tablesHtml += `<td colspan="2" class="name-cell">${a ? a.resolvedName : ''}</td>`;
       });
       tablesHtml += `</tr>`;
 
@@ -2242,86 +2242,29 @@ window.printS13 = async function() {
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>S-13 — Registro de Territorios</title>
+      <title>S-13-S — Registro de Territorios</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-          font-family: Arial, sans-serif;
-          font-size: 8px;
-          padding: 10mm;
-          color: #000;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 8px;
-        }
-        .header h1 {
-          font-size: 13px;
-          font-weight: bold;
-          margin-bottom: 2px;
-        }
-        .header p {
-          font-size: 9px;
-          color: #444;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 0;
-          page-break-inside: avoid;
-        }
-        th {
-          background: #1D4ED8;
-          color: white;
-          font-size: 8px;
-          font-weight: bold;
-          text-align: center;
-          padding: 3px 2px;
-          border: 1px solid #1D4ED8;
-        }
-        td {
-          border: 1px solid #ccc;
-          padding: 2px 3px;
-          vertical-align: top;
-          font-size: 7.5px;
-        }
-        .name-cell {
-          font-weight: bold;
-          font-size: 8px;
-          background: #f8f9fc;
-          min-height: 14px;
-        }
-        .date-cell {
-          color: #333;
-          font-size: 7px;
-          text-align: center;
-          min-height: 12px;
-          color: #1D4ED8;
-        }
+        body { font-family: Arial, sans-serif; font-size: 8px; padding: 10mm; color: #000; }
+        .header { text-align: center; margin-bottom: 8px; }
+        .header h1 { font-size: 13px; font-weight: bold; margin-bottom: 2px; }
+        .header p { font-size: 9px; color: #444; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 0; page-break-inside: avoid; }
+        th { background: #1D4ED8; color: white; font-size: 8px; font-weight: bold; text-align: center; padding: 3px 2px; border: 1px solid #1D4ED8; }
+        td { border: 1px solid #ccc; padding: 2px 3px; vertical-align: top; font-size: 7.5px; }
+        .name-cell { font-weight: bold; font-size: 8px; background: #f8f9fc; min-height: 14px; }
+        .date-cell { color: #1D4ED8; font-size: 7px; text-align: center; min-height: 12px; }
         .name-row td { border-bottom: none; }
         .date-row td { border-top: 1px dashed #ddd; }
-        @media print {
-          body { padding: 5mm; }
-          @page { size: landscape; margin: 5mm; }
-        }
-        .print-btn {
-          display: block;
-          margin: 0 auto 12px auto;
-          padding: 8px 24px;
-          background: #1D4ED8;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          font-size: 13px;
-          cursor: pointer;
-        }
+        @media print { body { padding: 5mm; } @page { size: landscape; margin: 5mm; } }
+        .print-btn { display: block; margin: 0 auto 12px auto; padding: 8px 24px; background: #1D4ED8; color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; }
         @media print { .print-btn { display: none; } }
       </style>
     </head>
     <body>
       <button class="print-btn" onclick="window.print()">🖨️ Imprimir</button>
       <div class="header">
-        <h1>Asistente de Territorios — Registro S-13</h1>
+        <h1>Asistente de Territorios — Registro S-13-S</h1>
         <p>Congregación Maywood Español · Impreso: ${new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
       ${tablesHtml}
