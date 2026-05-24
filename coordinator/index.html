@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.5 - insert + delete address rows, obs preset only -->
+<!-- v3.6 - view toggle cards/list + alternating address rows -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -280,6 +280,7 @@ import { Auth, DB, Utils } from '/assets/firebase2.js';
 
 let myTerritories = [], addresses = [], phoneRecords = [], settings = {};
 let currentTerrId = null, editingAddrId = null, editingPhoneId = null;
+let terrView = localStorage.getItem('terrView') || 'cards';
 
 document.addEventListener('DOMContentLoaded', () => Lang.init());
 
@@ -322,30 +323,54 @@ function renderDashboard() {
     <div class="stat-card stat-red"><div class="stat-label">Vencidos</div><div class="stat-value">${expired}</div></div>
     <div class="stat-card stat-muted"><div class="stat-label">Total</div><div class="stat-value">${myTerritories.length}</div></div>`;
   document.getElementById('expired-banner').style.display = expired > 0 ? 'block' : 'none';
+
+  // Toggle button styles
+  document.getElementById('btn-view-cards').className = `btn btn-sm ${terrView === 'cards' ? 'btn-primary' : 'btn-secondary'}`;
+  document.getElementById('btn-view-list').className = `btn btn-sm ${terrView === 'list' ? 'btn-primary' : 'btn-secondary'}`;
+
   if (!myTerritories.length) {
     document.getElementById('my-terr-list').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No tienes territorios asignados</p></div>`;
     return;
   }
-  const html = myTerritories.map(t => {
-    const isExp = t.state === 'Vencido';
-    const du = Utils.daysUntil(t.currentAssign?.expiresDate);
-    return `<div class="terr-card" style="${isExp ? 'border-color:var(--red)' : ''}">
-      ${t.mapUrl ? `<img class="terr-card-map" src="${t.mapUrl}" alt="${t.number}">` : ''}
-      <div class="terr-card-body">
-        <div class="terr-card-num">Territorio ${t.number}</div>
-        <div class="terr-card-streets">${t.streets || '—'}</div>
-        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.6rem;">
-          <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? 'Vencido' : 'Asignado'}</span>
-          <span class="badge badge-gray">Expira: ${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
-          ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du}d</span>` : ''}
+
+  let html = '';
+  if (terrView === 'cards') {
+    html = myTerritories.map(t => {
+      const isExp = t.state === 'Vencido';
+      const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+      return `<div class="terr-card" style="${isExp ? 'border-color:var(--red)' : ''}">
+        ${t.mapUrl ? `<img class="terr-card-map" src="${t.mapUrl}" alt="${t.number}">` : ''}
+        <div class="terr-card-body">
+          <div class="terr-card-num">Territorio ${t.number}</div>
+          <div class="terr-card-streets">${t.streets || '—'}</div>
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.6rem;">
+            <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? 'Vencido' : 'Asignado'}</span>
+            <span class="badge badge-gray">Expira: ${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
+            ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du}d</span>` : ''}
+          </div>
         </div>
-      </div>
-      <div class="terr-card-footer">
-        <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}">📋 Ver Territorio</button>
-        ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭 Navegar</a>` : ''}
-      </div>
-    </div>`;
-  }).join('');
+        <div class="terr-card-footer">
+          <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}">📋 Ver Territorio</button>
+          ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭 Navegar</a>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    html = myTerritories.map(t => {
+      const isExp = t.state === 'Vencido';
+      const du = Utils.daysUntil(t.currentAssign?.expiresDate);
+      return `<div class="terr-list-row" style="${isExp ? 'border-color:var(--red);background:var(--red-light);' : ''}">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;min-width:60px;">T${t.number}</div>
+        <div style="flex:1;font-size:0.82rem;color:var(--muted);">${t.streets || '—'}</div>
+        <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? 'Vencido' : 'Asignado'}</span>
+        <span class="badge badge-gray" style="font-size:0.68rem;">${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
+        ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du}d</span>` : ''}
+        <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}">📋 Ver</button>
+        ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭</a>` : ''}
+      </div>`;
+    }).join('');
+  }
+
   document.getElementById('my-terr-list').innerHTML = html;
   document.querySelectorAll('.open-terr-btn').forEach(btn => {
     btn.addEventListener('click', () => { returnToCampaign = false; openTerritory(btn.dataset.id); });
@@ -676,6 +701,8 @@ document.getElementById('save-insert-addr').addEventListener('click', async () =
   renderDoorList();
   Utils.toast('Dirección insertada', 'success');
 });
+document.getElementById('btn-view-cards').addEventListener('click', () => { terrView = 'cards'; localStorage.setItem('terrView', 'cards'); renderDashboard(); });
+document.getElementById('btn-view-list').addEventListener('click', () => { terrView = 'list'; localStorage.setItem('terrView', 'list'); renderDashboard(); });
 window.Auth = Auth;
 </script>
 </body>
