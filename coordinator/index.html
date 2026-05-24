@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.4 - clear observation button -->
+<!-- v3.5 - insert + delete address rows, obs preset only -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -176,8 +176,8 @@
       <div class="form-group">
         <label class="form-label">Observación</label>
         <div id="obs-btns"></div>
-        <input type="text" class="form-control" id="edit-obs" placeholder="O escribe manualmente..." style="margin-top:0.3rem;">
         <button class="btn btn-ghost btn-sm" id="clear-obs" style="margin-top:0.3rem;">✕ Borrar observación</button>
+        <input type="hidden" id="edit-obs">
       </div>
       <div class="form-group">
         <label class="form-label">Comentario</label>
@@ -235,7 +235,35 @@
     </div>
   </div>
 </div>
-
+<!-- Insert Address Modal -->
+<div class="modal-overlay" id="modal-insert-addr">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">+ Insertar Dirección</span>
+      <button class="modal-close" id="cls-insert-addr">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="insert-after-idx" value="-1">
+      <div style="background:var(--surface2);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1rem;font-size:0.82rem;color:var(--muted);">
+        <span id="insert-position-label"></span>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Dirección</label>
+          <input type="text" class="form-control" id="insert-addr-val" placeholder="Ej: 4700 1/2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Calle</label>
+          <input type="text" class="form-control" id="insert-street-val" placeholder="Ej: 58th St">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="cls-insert-addr-2">Cancelar</button>
+      <button class="btn btn-green" id="save-insert-addr">Insertar</button>
+    </div>
+  </div>
+</div>
 <script src="/assets/i18n.js"></script>
 <script type="module">
 import { Auth, DB, Utils } from '/assets/firebase2.js';
@@ -346,15 +374,53 @@ async function openTerritory(terrId) {
 function renderDoorList() {
   document.getElementById('door-count').textContent = `${addresses.length} direcciones`;
   if (!addresses.length) { document.getElementById('door-list').innerHTML = `<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.85rem;">Sin direcciones</div>`; return; }
-  document.getElementById('door-list').innerHTML = addresses.map(a => `
-    <div class="addr-row ${a.visitDate ? 'visited' : ''}">
+
+  let html = '';
+  addresses.forEach((a, i) => {
+    html += `<div class="insert-strip" data-after="${i - 1}" style="height:4px;background:transparent;cursor:pointer;position:relative;transition:all .15s;">
+      <div class="insert-hint" style="position:absolute;left:50%;transform:translateX(-50%);top:-10px;opacity:0;transition:opacity .15s;background:var(--accent);color:#fff;border-radius:20px;padding:0.15rem 0.7rem;font-size:0.7rem;white-space:nowrap;pointer-events:none;z-index:10;">+ Insertar aquí</div>
+    </div>`;
+    html += `<div class="addr-row ${a.visitDate ? 'visited' : ''}">
       <div class="addr-num">${a.address}</div>
       <div class="addr-street">${a.street || ''}</div>
       <div class="addr-obs">${a.observation ? `<span class="obs-tag">${a.observation}</span>` : ''}${a.comment ? `<span style="font-size:0.78rem;color:var(--muted);margin-left:0.3rem;">${a.comment}</span>` : ''}</div>
       <div class="addr-date">${a.visitDate ? Utils.fmtDate(a.visitDate) : ''}</div>
-      <button class="edit-btn edit-addr-btn" data-id="${a.id}">✏️</button>
-    </div>`).join('');
+      <div style="display:flex;gap:0.2rem;">
+        <button class="edit-btn edit-addr-btn" data-id="${a.id}" title="Editar">✏️</button>
+        <button class="edit-btn del-addr-btn" data-id="${a.id}" title="Eliminar" style="color:var(--red);border-color:#fecdca;">🗑</button>
+      </div>
+    </div>`;
+  });
+  html += `<div class="insert-strip" data-after="${addresses.length - 1}" style="height:4px;background:transparent;cursor:pointer;position:relative;transition:all .15s;">
+    <div class="insert-hint" style="position:absolute;left:50%;transform:translateX(-50%);top:-10px;opacity:0;transition:opacity .15s;background:var(--accent);color:#fff;border-radius:20px;padding:0.15rem 0.7rem;font-size:0.7rem;white-space:nowrap;pointer-events:none;z-index:10;">+ Insertar al final</div>
+  </div>`;
+
+  document.getElementById('door-list').innerHTML = html;
+
   document.querySelectorAll('.edit-addr-btn').forEach(btn => btn.addEventListener('click', () => openEditAddr(btn.dataset.id)));
+
+  document.querySelectorAll('.del-addr-btn').forEach(btn => btn.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar esta dirección?')) return;
+    await DB.deleteAddress(currentTerrId, btn.dataset.id);
+    addresses = addresses.filter(a => a.id !== btn.dataset.id);
+    renderDoorList();
+    Utils.toast('Dirección eliminada', 'success');
+  }));
+
+  document.querySelectorAll('.insert-strip').forEach(strip => {
+    strip.addEventListener('mouseenter', () => { strip.style.height = '24px'; strip.style.background = 'var(--accent-light)'; strip.querySelector('.insert-hint').style.opacity = '1'; });
+    strip.addEventListener('mouseleave', () => { strip.style.height = '4px'; strip.style.background = 'transparent'; strip.querySelector('.insert-hint').style.opacity = '0'; });
+    strip.addEventListener('click', () => openInsertAddr(parseInt(strip.dataset.after)));
+  });
+}
+
+function openInsertAddr(insertAfterIdx) {
+  document.getElementById('insert-after-idx').value = insertAfterIdx;
+  const afterAddr = insertAfterIdx >= 0 ? addresses[insertAfterIdx] : null;
+  document.getElementById('insert-position-label').textContent = afterAddr ? `Después de: ${afterAddr.address} ${afterAddr.street || ''}` : 'Al inicio de la lista';
+  document.getElementById('insert-addr-val').value = '';
+  document.getElementById('insert-street-val').value = '';
+  document.getElementById('modal-insert-addr').classList.add('open');
 }
 
 function openEditAddr(id) {
@@ -363,6 +429,7 @@ function openEditAddr(id) {
   if (!a) return;
   document.getElementById('edit-addr-label').textContent = `${a.address} ${a.street || ''}`;
   document.getElementById('edit-obs').value = a.observation || '';
+  // No manual input — obs is set only via preset buttons
   document.getElementById('edit-comment').value = a.comment || '';
   document.getElementById('edit-visit').value = a.visitDate || '';
   const ds = (settings.doorStatuses?.length) ? settings.doorStatuses : ['Perro afuera','Duerme de día','Negocio','No tocar','Revisitar','Mudado'];
@@ -592,7 +659,22 @@ async function openTerritoryFromCampaign(terrId, terrNumber) {
   document.getElementById('view-campaign').style.display = 'none';
   await openTerritory(terrId);
 }
+['cls-insert-addr','cls-insert-addr-2'].forEach(id => document.getElementById(id).addEventListener('click', closeModals));
 
+document.getElementById('save-insert-addr').addEventListener('click', async () => {
+  const address = document.getElementById('insert-addr-val').value.trim();
+  const street = document.getElementById('insert-street-val').value.trim();
+  if (!address) { Utils.toast('Dirección requerida', 'error'); return; }
+  const insertAfterIdx = parseInt(document.getElementById('insert-after-idx').value);
+  const beforeOrder = insertAfterIdx >= 0 ? (addresses[insertAfterIdx]?.order ?? insertAfterIdx) : -1;
+  const afterOrder = insertAfterIdx + 1 < addresses.length ? (addresses[insertAfterIdx + 1]?.order ?? insertAfterIdx + 1) : beforeOrder + 2;
+  const newOrder = (beforeOrder + afterOrder) / 2;
+  await DB.saveAddress(currentTerrId, { address, street, observation: '', comment: '', visitDate: '', order: newOrder }, null);
+  addresses = await DB.getAddresses(currentTerrId);
+  closeModals();
+  renderDoorList();
+  Utils.toast('Dirección insertada', 'success');
+});
 window.Auth = Auth;
 </script>
 </body>
