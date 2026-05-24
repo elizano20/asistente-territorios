@@ -50,6 +50,10 @@
   .tab-pane.active{display:block;}
   .page{padding:1rem;max-width:900px;margin:0 auto;}
   .sticky-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--border);padding:0.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;}
+  .terr-list-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;}
+  .terr-list-row:hover{border-color:var(--accent);}
+  .addr-row:nth-child(even){background:#f8f9fc;}
+  .addr-row.visited:nth-child(even){background:var(--green-light);}
 </style>
 </head>
 <body>
@@ -91,7 +95,13 @@
         </div>
       </div>
 
-      <h3 style="font-family:var(--font-head);margin-bottom:1rem;">Mis Territorios</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h3 style="font-family:var(--font-head);">Mis Territorios</h3>
+        <div style="display:flex;gap:0.3rem;">
+          <button id="btn-view-cards" class="btn btn-primary btn-sm" title="Vista Tarjetas">🃏 Tarjetas</button>
+          <button id="btn-view-list" class="btn btn-secondary btn-sm" title="Vista Lista">📋 Lista</button>
+        </div>
+      </div>
       <div id="my-terr-list"></div>
     </div>
   </div>
