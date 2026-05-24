@@ -377,25 +377,22 @@ function renderDoorList() {
 
   let html = '';
   addresses.forEach((a, i) => {
-    html += `<div class="insert-strip" data-after="${i - 1}" style="height:4px;background:transparent;cursor:pointer;position:relative;transition:all .15s;">
-      <div class="insert-hint" style="position:absolute;left:50%;transform:translateX(-50%);top:-10px;opacity:0;transition:opacity .15s;background:var(--accent);color:#fff;border-radius:20px;padding:0.15rem 0.7rem;font-size:0.7rem;white-space:nowrap;pointer-events:none;z-index:10;">+ Insertar aquí</div>
-    </div>`;
     html += `<div class="addr-row ${a.visitDate ? 'visited' : ''}">
       <div class="addr-num">${a.address}</div>
       <div class="addr-street">${a.street || ''}</div>
       <div class="addr-obs">${a.observation ? `<span class="obs-tag">${a.observation}</span>` : ''}${a.comment ? `<span style="font-size:0.78rem;color:var(--muted);margin-left:0.3rem;">${a.comment}</span>` : ''}</div>
       <div class="addr-date">${a.visitDate ? Utils.fmtDate(a.visitDate) : ''}</div>
       <div style="display:flex;gap:0.2rem;">
+        <button class="edit-btn insert-addr-btn" data-after="${i}" title="Insertar después" style="color:var(--accent);border-color:#c7d7fd;">+</button>
         <button class="edit-btn edit-addr-btn" data-id="${a.id}" title="Editar">✏️</button>
         <button class="edit-btn del-addr-btn" data-id="${a.id}" title="Eliminar" style="color:var(--red);border-color:#fecdca;">🗑</button>
       </div>
     </div>`;
   });
-  html += `<div class="insert-strip" data-after="${addresses.length - 1}" style="height:4px;background:transparent;cursor:pointer;position:relative;transition:all .15s;">
-    <div class="insert-hint" style="position:absolute;left:50%;transform:translateX(-50%);top:-10px;opacity:0;transition:opacity .15s;background:var(--accent);color:#fff;border-radius:20px;padding:0.15rem 0.7rem;font-size:0.7rem;white-space:nowrap;pointer-events:none;z-index:10;">+ Insertar al final</div>
-  </div>`;
 
   document.getElementById('door-list').innerHTML = html;
+
+  document.querySelectorAll('.insert-addr-btn').forEach(btn => btn.addEventListener('click', () => openInsertAddr(parseInt(btn.dataset.after))));
 
   document.querySelectorAll('.edit-addr-btn').forEach(btn => btn.addEventListener('click', () => openEditAddr(btn.dataset.id)));
 
@@ -406,12 +403,6 @@ function renderDoorList() {
     renderDoorList();
     Utils.toast('Dirección eliminada', 'success');
   }));
-
-  document.querySelectorAll('.insert-strip').forEach(strip => {
-    strip.addEventListener('mouseenter', () => { strip.style.height = '24px'; strip.style.background = 'var(--accent-light)'; strip.querySelector('.insert-hint').style.opacity = '1'; });
-    strip.addEventListener('mouseleave', () => { strip.style.height = '4px'; strip.style.background = 'transparent'; strip.querySelector('.insert-hint').style.opacity = '0'; });
-    strip.addEventListener('click', () => openInsertAddr(parseInt(strip.dataset.after)));
-  });
 }
 
 function openInsertAddr(insertAfterIdx) {
