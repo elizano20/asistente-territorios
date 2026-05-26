@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.6 - view toggle cards/list + alternating address rows -->
+<!-- v3.7 - context menu, remove comment, auto-date -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -54,6 +54,11 @@
   .terr-list-row:hover{border-color:var(--accent);}
   .addr-row:nth-child(even){background:#f8f9fc;}
   .addr-row.visited:nth-child(even){background:var(--green-light);}
+  .ctx-menu{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:100;min-width:150px;overflow:hidden;display:none;}
+  .ctx-menu.open{display:block;}
+  .ctx-menu button{display:block;width:100%;text-align:left;padding:0.6rem 0.9rem;font-size:0.82rem;background:none;border:none;cursor:pointer;color:var(--text);white-space:nowrap;}
+  .ctx-menu button:hover{background:var(--surface2);}
+  .ctx-menu button.danger{color:var(--red);}
 </style>
 </head>
 <body>
@@ -188,10 +193,6 @@
         <div id="obs-btns"></div>
         <button class="btn btn-ghost btn-sm" id="clear-obs" style="margin-top:0.3rem;">✕ Borrar observación</button>
         <input type="hidden" id="edit-obs">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Comentario</label>
-        <textarea class="form-control" id="edit-comment" rows="2"></textarea>
       </div>
       <div class="form-group">
         <label class="form-label">Fecha de Visita</label>
@@ -412,26 +413,51 @@ function renderDoorList() {
 
   let html = '';
   addresses.forEach((a, i) => {
-    html += `<div class="addr-row ${a.visitDate ? 'visited' : ''}">
+    html += `<div class="addr-row ${a.visitDate ? 'visited' : ''}" style="position:relative;">
       <div class="addr-num">${a.address}</div>
       <div class="addr-street">${a.street || ''}</div>
-      <div class="addr-obs">${a.observation ? `<span class="obs-tag">${a.observation}</span>` : ''}${a.comment ? `<span style="font-size:0.78rem;color:var(--muted);margin-left:0.3rem;">${a.comment}</span>` : ''}</div>
+      <div class="addr-obs">${a.observation ? `<span class="obs-tag">${a.observation}</span>` : ''}</div>
       <div class="addr-date">${a.visitDate ? Utils.fmtDate(a.visitDate) : ''}</div>
-      <div style="display:flex;gap:0.2rem;">
-        <button class="edit-btn insert-addr-btn" data-after="${i}" title="Insertar después" style="color:var(--accent);border-color:#c7d7fd;">+</button>
-        <button class="edit-btn edit-addr-btn" data-id="${a.id}" title="Editar">✏️</button>
-        <button class="edit-btn del-addr-btn" data-id="${a.id}" title="Eliminar" style="color:var(--red);border-color:#fecdca;">🗑</button>
+      <div style="position:relative;">
+        <button class="edit-btn ctx-trigger" data-idx="${i}" data-id="${a.id}" title="Opciones" style="font-size:1rem;padding:0.2rem 0.5rem;font-weight:700;">⋮</button>
+        <div class="ctx-menu" id="ctx-${a.id}">
+          <button class="ctx-edit" data-id="${a.id}">✏️ Editar</button>
+          <button class="ctx-insert" data-after="${i}">➕ Insertar después</button>
+          <button class="ctx-del danger" data-id="${a.id}">🗑 Eliminar</button>
+        </div>
       </div>
     </div>`;
   });
 
   document.getElementById('door-list').innerHTML = html;
 
-  document.querySelectorAll('.insert-addr-btn').forEach(btn => btn.addEventListener('click', () => openInsertAddr(parseInt(btn.dataset.after))));
+  // Close all context menus
+  function closeAllCtx() { document.querySelectorAll('.ctx-menu').forEach(m => m.classList.remove('open')); }
+  document.addEventListener('click', closeAllCtx, { once: true });
 
-  document.querySelectorAll('.edit-addr-btn').forEach(btn => btn.addEventListener('click', () => openEditAddr(btn.dataset.id)));
+  // Context menu toggle
+  document.querySelectorAll('.ctx-trigger').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = document.getElementById(`ctx-${btn.dataset.id}`);
+      const wasOpen = menu.classList.contains('open');
+      closeAllCtx();
+      if (!wasOpen) {
+        menu.classList.add('open');
+        document.addEventListener('click', closeAllCtx, { once: true });
+      }
+    });
+  });
 
-  document.querySelectorAll('.del-addr-btn').forEach(btn => btn.addEventListener('click', async () => {
+  // Edit
+  document.querySelectorAll('.ctx-edit').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); closeAllCtx(); openEditAddr(btn.dataset.id); }));
+
+  // Insert
+  document.querySelectorAll('.ctx-insert').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); closeAllCtx(); openInsertAddr(parseInt(btn.dataset.after)); }));
+
+  // Delete
+  document.querySelectorAll('.ctx-del').forEach(btn => btn.addEventListener('click', async (e) => {
+    e.stopPropagation(); closeAllCtx();
     if (!confirm('¿Eliminar esta dirección?')) return;
     await DB.deleteAddress(currentTerrId, btn.dataset.id);
     addresses = addresses.filter(a => a.id !== btn.dataset.id);
@@ -460,17 +486,21 @@ function openEditAddr(id) {
   document.getElementById('edit-visit').value = a.visitDate || '';
   const ds = (settings.doorStatuses?.length) ? settings.doorStatuses : ['Perro afuera','Duerme de día','Negocio','No tocar','Revisitar','Mudado'];
   document.getElementById('obs-btns').innerHTML = ds.map(s => `<button type="button" class="preset-btn obs-preset-btn${s === a.observation ? ' active' : ''}" data-val="${s}">${s}</button>`).join('');
-  document.querySelectorAll('.obs-preset-btn').forEach(btn => btn.addEventListener('click', () => {
+ document.querySelectorAll('.obs-preset-btn').forEach(btn => btn.addEventListener('click', () => {
     document.getElementById('edit-obs').value = btn.dataset.val;
     document.querySelectorAll('.obs-preset-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    // Auto-populate today's date when observation is selected
+    if (!document.getElementById('edit-visit').value) {
+      document.getElementById('edit-visit').value = Utils.today();
+    }
   }));
   document.getElementById('modal-addr').classList.add('open');
 }
 
 document.getElementById('save-addr').addEventListener('click', async () => {
   const a = addresses.find(x => x.id === editingAddrId); if (!a) return;
-  const data = { observation: document.getElementById('edit-obs').value.trim(), comment: document.getElementById('edit-comment').value.trim(), visitDate: document.getElementById('edit-visit').value };
+  const data = { observation: document.getElementById('edit-obs').value.trim(), visitDate: document.getElementById('edit-visit').value };
   Object.assign(a, data);
   await DB.saveAddress(currentTerrId, data, editingAddrId);
   closeModals(); renderDoorList(); Utils.toast('Guardado', 'success');

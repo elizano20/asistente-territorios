@@ -98,7 +98,6 @@
               <th data-i18n="address">Dirección</th>
               <th data-i18n="street">Calle</th>
               <th data-i18n="observation">Observación</th>
-              <th data-i18n="comment">Comentario</th>
               <th data-i18n="visitDate">Fecha Visita</th>
             </tr>
           </thead>
@@ -186,7 +185,6 @@ async function init() {
         <td><strong>${a.address}</strong></td>
         <td class="text-muted">${a.street || '—'}</td>
         <td>${a.observation ? `<span class="obs-tag">${a.observation}</span>` : '—'}</td>
-        <td>${a.comment || '—'}</td>
         <td>${a.visitDate ? Utils.fmtDate(a.visitDate) : '—'}</td>
       </tr>`).join('') || `<tr><td colspan="5" class="text-muted text-sm" style="padding:1.5rem;text-align:center">${Lang.t('noAddresses')}</td></tr>`;
 
