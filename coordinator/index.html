@@ -339,6 +339,7 @@ Auth.onReady(async (user) => {
   await loadMyTerritories(profile.uid);
   await loadActiveCampaign(profile.uid);
   await loadSharedTerritories(profile.uid);
+  renderDashboard(); // Render after all data is loaded
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   Lang.apply();
@@ -349,7 +350,7 @@ async function loadMyTerritories(coordId) {
   const now = Utils.today();
   myTerritories = all.filter(t => t.currentAssign?.coordinatorId === coordId && (t.state === 'Asignado' || t.state === 'Vencido'));
   myTerritories.forEach(t => { if (t.currentAssign?.expiresDate < now) t.state = 'Vencido'; });
-  renderDashboard();
+  // Don't render yet — wait for shared territories to load first
 }
 
 function renderDashboard() {
