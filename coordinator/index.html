@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.7 - context menu, remove comment, auto-date -->
+<!-- v3.8 - shared territories feature -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/app.css">
 <style>
-  .terr-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
+  .terr-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;box-shadow:0 2px 8px rgba(16,24,40,0.08);}
   .terr-card-map{width:100%;height:180px;object-fit:contain;display:block;background:#f3f4f8;}
   .terr-card-body{padding:1rem 1.2rem;}
   .terr-card-num{font-family:var(--font-head);font-weight:800;font-size:1.4rem;}
@@ -99,6 +99,9 @@
           <div class="progress-bar"><div class="progress-fill" id="camp-my-bar" style="width:0%"></div></div>
         </div>
       </div>
+
+      <!-- Shared WITH me section -->
+      <div id="shared-with-me-section" style="display:none;margin-bottom:1.5rem;"></div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
         <h3 style="font-family:var(--font-head);">Mis Territorios</h3>
@@ -275,6 +278,38 @@
     </div>
   </div>
 </div>
+<!-- Share Territory Modal -->
+<div class="modal-overlay" id="modal-share-terr">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🤝 Compartir Territorio</span>
+      <button class="modal-close" id="cls-share-terr">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="share-terr-id">
+      <input type="hidden" id="share-terr-num">
+      <div style="background:var(--surface2);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:1rem;">
+        <div style="font-size:0.7rem;color:var(--muted);font-family:var(--font-mono);">TERRITORIO</div>
+        <div id="share-terr-label" style="font-weight:700;margin-top:0.2rem;"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Compartir con</label>
+        <select class="form-control" id="share-with-coord">
+          <option value="">— Seleccionar coordinador —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha de regreso</label>
+        <input type="date" class="form-control" id="share-end-date">
+        <span class="form-hint">El territorio dejará de aparecer después de esta fecha</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="cls-share-terr-2">Cancelar</button>
+      <button class="btn btn-primary" id="save-share-terr">🤝 Compartir</button>
+    </div>
+  </div>
+</div>
 <script src="/assets/i18n.js"></script>
 <script type="module">
 import { Auth, DB, Utils } from '/assets/firebase2.js';
@@ -303,6 +338,7 @@ Auth.onReady(async (user) => {
   settings = await DB.getSettings();
   await loadMyTerritories(profile.uid);
   await loadActiveCampaign(profile.uid);
+  await loadSharedTerritories(profile.uid);
   document.getElementById('loading-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   Lang.apply();
@@ -353,7 +389,9 @@ function renderDashboard() {
         <div class="terr-card-footer">
           <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}">📋 Ver Territorio</button>
           ${t.mapLink ? `<a href="${t.mapLink}" target="_blank" class="btn btn-ghost btn-sm">🧭 Navegar</a>` : ''}
+          <button class="btn btn-secondary btn-sm share-terr-btn" data-id="${t.id}" data-num="${t.number}">🤝 Compartir</button>
         </div>
+        ${sharedByMe.find(s => s.territoryId === t.id) ? `<div style="background:var(--yellow-light);border-top:1px solid #fde68a;padding:0.5rem 1.2rem;font-size:0.75rem;color:var(--yellow);display:flex;justify-content:space-between;align-items:center;"><span>🤝 Compartido con ${sharedByMe.find(s => s.territoryId === t.id)?.sharedWithName} hasta ${Utils.fmtDate(sharedByMe.find(s => s.territoryId === t.id)?.endDate)}</span><button class="btn btn-ghost btn-sm unshare-btn" data-shareid="${sharedByMe.find(s => s.territoryId === t.id)?.id}" style="font-size:0.72rem;color:var(--red);">✕ Dejar de compartir</button></div>` : ''}
       </div>`;
     }).join('');
   } else {
@@ -375,6 +413,18 @@ function renderDashboard() {
   document.getElementById('my-terr-list').innerHTML = html;
   document.querySelectorAll('.open-terr-btn').forEach(btn => {
     btn.addEventListener('click', () => { returnToCampaign = false; openTerritory(btn.dataset.id); });
+  });
+  document.querySelectorAll('.share-terr-btn').forEach(btn => {
+    btn.addEventListener('click', () => openShareTerrModal(btn.dataset.id, btn.dataset.num));
+  });
+  document.querySelectorAll('.unshare-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('¿Dejar de compartir este territorio?')) return;
+      await DB.unshareTerritory(btn.dataset.shareid);
+      sharedByMe = await DB.getSharedByMe(Auth.currentProfile.uid);
+      renderDashboard();
+      Utils.toast('Territorio descompartido', 'success');
+    });
   });
 }
 
@@ -742,6 +792,84 @@ document.getElementById('save-insert-addr').addEventListener('click', async () =
 });
 document.getElementById('btn-view-cards').addEventListener('click', () => { terrView = 'cards'; localStorage.setItem('terrView', 'cards'); renderDashboard(); });
 document.getElementById('btn-view-list').addEventListener('click', () => { terrView = 'list'; localStorage.setItem('terrView', 'list'); renderDashboard(); });
+// ── Shared Territories ────────────────────────────────────────────────────────
+let sharedByMe = [], sharedWithMe = [], allCoordinators = [];
+
+async function loadSharedTerritories(coordId) {
+  [sharedByMe, sharedWithMe, allCoordinators] = await Promise.all([
+    DB.getSharedByMe(coordId),
+    DB.getSharedWithMe(coordId),
+    DB.getCoordinators()
+  ]);
+  const today = Utils.today();
+  sharedByMe = sharedByMe.filter(s => s.endDate >= today);
+  sharedWithMe = sharedWithMe.filter(s => s.endDate >= today);
+
+  if (sharedWithMe.length) {
+    const html = `<div style="background:var(--accent-light);border:1px solid #c7d7fd;border-radius:var(--radius);padding:1rem 1.2rem;">
+      <div style="font-family:var(--font-head);font-weight:700;color:var(--accent);margin-bottom:0.8rem;">🤝 Territorios Prestados</div>
+      ${sharedWithMe.map(s => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #c7d7fd;flex-wrap:wrap;gap:0.5rem;">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem;">Territorio ${s.territoryNumber}</div>
+            <div style="font-size:0.75rem;color:var(--muted);">Prestado por ${s.ownerName} · hasta ${Utils.fmtDate(s.endDate)}</div>
+          </div>
+          <button class="btn btn-primary btn-sm open-shared-btn" data-id="${s.territoryId}">📋 Ver</button>
+        </div>`).join('')}
+    </div>`;
+    document.getElementById('shared-with-me-section').innerHTML = html;
+    document.getElementById('shared-with-me-section').style.display = 'block';
+    document.querySelectorAll('.open-shared-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const terrId = btn.dataset.id;
+        let t = myTerritories.find(x => x.id === terrId);
+        if (!t) t = await DB.getTerritory(terrId);
+        if (!t) { Utils.toast('Territorio no encontrado', 'error'); return; }
+        if (!myTerritories.find(x => x.id === terrId)) myTerritories.push(t);
+        returnToCampaign = false;
+        await openTerritory(terrId);
+      });
+    });
+  } else {
+    document.getElementById('shared-with-me-section').style.display = 'none';
+  }
+}
+
+function openShareTerrModal(terrId, terrNum) {
+  document.getElementById('share-terr-id').value = terrId;
+  document.getElementById('share-terr-num').value = terrNum;
+  document.getElementById('share-terr-label').textContent = `Territorio ${terrNum}`;
+  document.getElementById('share-end-date').value = '';
+  const myId = Auth.currentProfile?.uid;
+  const others = allCoordinators.filter(c => c.id !== myId);
+  document.getElementById('share-with-coord').innerHTML =
+    `<option value="">— Seleccionar coordinador —</option>` +
+    others.map(c => `<option value="${c.id}" data-name="${c.name}">${c.name}</option>`).join('');
+  document.getElementById('modal-share-terr').classList.add('open');
+}
+
+document.getElementById('save-share-terr').addEventListener('click', async () => {
+  const terrId = document.getElementById('share-terr-id').value;
+  const terrNum = document.getElementById('share-terr-num').value;
+  const coordSelect = document.getElementById('share-with-coord');
+  const sharedWithId = coordSelect.value;
+  const sharedWithName = coordSelect.options[coordSelect.selectedIndex]?.dataset.name || '';
+  const endDate = document.getElementById('share-end-date').value;
+  if (!sharedWithId) { Utils.toast('Selecciona un coordinador', 'error'); return; }
+  if (!endDate) { Utils.toast('Selecciona la fecha de regreso', 'error'); return; }
+  const myProfile = Auth.currentProfile;
+  await DB.shareTerritory({
+    territoryId: terrId, territoryNumber: terrNum,
+    ownerId: myProfile.uid, ownerName: myProfile.name || myProfile.email,
+    sharedWithId, sharedWithName, endDate
+  });
+  sharedByMe = await DB.getSharedByMe(myProfile.uid);
+  closeModals();
+  renderDashboard();
+  Utils.toast(`✅ Territorio ${terrNum} compartido con ${sharedWithName}`, 'success');
+});
+
+['cls-share-terr','cls-share-terr-2'].forEach(id => document.getElementById(id).addEventListener('click', closeModals));
 window.Auth = Auth;
 </script>
 </body>

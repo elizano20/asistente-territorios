@@ -4,8 +4,9 @@
 :root {
   --bg: #f8f9fc;
   --surface: #ffffff;
+  --card-shadow: 0 2px 8px rgba(16,24,40,0.08);
   --surface2: #f3f4f8;
-  --border: #e4e6ef;
+  --border: #d0d5e8;
   --border-light: #f0f1f7;
   --accent: #3b6ef5;
   --accent-light: #eef2fe;
