@@ -488,8 +488,6 @@ function openEditAddr(id) {
   if (!a) return;
   document.getElementById('edit-addr-label').textContent = `${a.address} ${a.street || ''}`;
   document.getElementById('edit-obs').value = a.observation || '';
-  // No manual input — obs is set only via preset buttons
-  document.getElementById('edit-comment').value = a.comment || '';
   document.getElementById('edit-visit').value = a.visitDate || '';
   const ds = (settings.doorStatuses?.length) ? settings.doorStatuses : ['Perro afuera','Duerme de día','Negocio','No tocar','Revisitar','Mudado'];
   document.getElementById('obs-btns').innerHTML = ds.map(s => `<button type="button" class="preset-btn obs-preset-btn${s === a.observation ? ' active' : ''}" data-val="${s}">${s}</button>`).join('');
