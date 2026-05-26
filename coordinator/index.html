@@ -450,7 +450,14 @@ function renderDoorList() {
   });
 
   // Edit
-  document.querySelectorAll('.ctx-edit').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); closeAllCtx(); openEditAddr(btn.dataset.id); }));
+  document.querySelectorAll('.ctx-edit').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAllCtx();
+      const id = btn.dataset.id;
+      setTimeout(() => openEditAddr(id), 50);
+    });
+  });
 
   // Insert
   document.querySelectorAll('.ctx-insert').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); closeAllCtx(); openInsertAddr(parseInt(btn.dataset.after)); }));
