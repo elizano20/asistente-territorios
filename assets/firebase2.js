@@ -40,32 +40,20 @@ const Auth = {
   },
 
   async createCoordinator(email, password, name, maxTerr) {
-    // Save current admin user reference
-    const adminUser = auth.currentUser;
-    
-    // Create a completely separate Firebase app instance
     const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
     const secondaryAuth = getAuth(secondaryApp);
-    
     try {
-      // Create user in secondary app - does NOT affect main auth session
       const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
       const newUid = cred.user.uid;
-      
-      // Sign out of secondary app immediately
       await signOut(secondaryAuth);
-      
-      // Save coordinator profile to Firestore using main app (admin still logged in)
       await setDoc(doc(db, 'users', newUid), {
         name, email, role: 'coordinator',
         maxTerr: maxTerr || 8,
         active: true,
         createdAt: serverTimestamp()
       });
-      
       return { uid: newUid };
     } finally {
-      // Clean up secondary app
       await deleteApp(secondaryApp);
     }
   },
@@ -91,10 +79,7 @@ const Auth = {
   requireAuth(allowedRoles) {
     return new Promise((resolve) => {
       this.onReady(async (user) => {
-        if (!user) {
-          window.location.href = '/index.html';
-          return;
-        }
+        if (!user) { window.location.href = '/index.html'; return; }
         if (allowedRoles && !allowedRoles.includes(this.currentRole)) {
           if (this.currentRole === 'coordinator') window.location.href = '/coordinator/';
           else window.location.href = '/index.html';
@@ -155,10 +140,8 @@ const DB = {
 
   async bulkSaveAddresses(territoryId, addresses) {
     const batch = writeBatch(db);
-    // Delete existing
     const existing = await getDocs(collection(db, 'territories', territoryId, 'addresses'));
     existing.docs.forEach(d => batch.delete(d.ref));
-    // Add new
     addresses.forEach((addr, i) => {
       const ref = doc(collection(db, 'territories', territoryId, 'addresses'));
       batch.set(ref, { ...addr, order: i });
@@ -266,7 +249,6 @@ const DB = {
   },
 
   async deleteCampaign(id) {
-    // Delete all assignments for this campaign first
     const snap = await getDocs(query(collection(db, 'campaignAssignments'), where('campaignId', '==', id)));
     const batch = writeBatch(db);
     snap.docs.forEach(d => batch.delete(d.ref));
@@ -274,7 +256,6 @@ const DB = {
     await deleteDoc(doc(db, 'campaigns', id));
   },
 
-  // Campaign assignments
   async getCampaignAssignments(campaignId) {
     const snap = await getDocs(query(collection(db, 'campaignAssignments'), where('campaignId', '==', campaignId)));
     const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -318,20 +299,17 @@ const DB = {
     });
   },
 
-  // Get campaign history for a coordinator (for rotation logic)
   async getCoordinatorCampaignHistory(coordinatorId) {
     const snap = await getDocs(query(collection(db, 'campaignAssignments'), where('coordinatorId', '==', coordinatorId)));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   },
 
-  // Get active campaign
   async getActiveCampaign() {
     const snap = await getDocs(query(collection(db, 'campaigns'), where('status', '==', 'activa')));
     if (snap.empty) return null;
     return { id: snap.docs[0].id, ...snap.docs[0].data() };
   },
 
-  // Email report recipients
   async getReportSettings() {
     const snap = await getDoc(doc(db, 'settings', 'reports'));
     return snap.exists() ? snap.data() : { emails: [], emailjsServiceId: '', emailjsTemplateId: '', emailjsPublicKey: '' };
@@ -339,6 +317,26 @@ const DB = {
 
   async saveReportSettings(data) {
     await setDoc(doc(db, 'settings', 'reports'), data, { merge: true });
+  },
+
+  // ── Shared Territories ─────────────────────────────────────────────────────
+  async shareTerritory(data) {
+    const ref = await addDoc(collection(db, 'sharedTerritories'), { ...data, createdAt: serverTimestamp() });
+    return ref.id;
+  },
+
+  async getSharedByMe(coordId) {
+    const snap = await getDocs(query(collection(db, 'sharedTerritories'), where('ownerId', '==', coordId)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async getSharedWithMe(coordId) {
+    const snap = await getDocs(query(collection(db, 'sharedTerritories'), where('sharedWithId', '==', coordId)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  },
+
+  async unshareTerritory(shareId) {
+    await deleteDoc(doc(db, 'sharedTerritories', shareId));
   }
 };
 
@@ -359,7 +357,7 @@ const Store = {
 // ── Utility Helpers ───────────────────────────────────────────────────────────
 const Utils = {
   today() { return new Date().toISOString().split('T')[0]; },
-  
+
   addDays(dateStr, days) {
     const d = new Date(dateStr);
     d.setDate(d.getDate() + days);
@@ -402,7 +400,6 @@ const Utils = {
     return window.confirm(msg);
   },
 
-  // Parse xlsx/csv address file
   async parseAddressFile(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -412,36 +409,21 @@ const Utils = {
           const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
           const addresses = [];
           let headerFound = false;
-
-          // Keywords that indicate header/metadata rows to skip
           const skipKeywords = [
             'registro de casa', 'calles', 'encargado', 'actualizacion',
             'actualización', 'territorio', 'expira', 'en vivo', 'publicador',
             'territorio personal', 'fecha de', 'observaci', 'comentario'
           ];
-
           for (const line of lines) {
             const cols = line.split('\t');
             const firstCol = (cols[0] || '').trim().toLowerCase();
-
-            // Stop at end marker
             if (line.includes('***') || line.includes('Notas Completas') || line.includes('Fin de')) break;
-
             if (!headerFound) {
-              // Found the column headers row — next rows are addresses
-              if (firstCol.includes('direcci') || firstCol === 'dirección' || firstCol === 'direccion') {
-                headerFound = true;
-              }
+              if (firstCol.includes('direcci') || firstCol === 'dirección' || firstCol === 'direccion') { headerFound = true; }
               continue;
             }
-
-            // Skip rows that look like metadata/headers accidentally included
             if (skipKeywords.some(kw => firstCol.includes(kw))) continue;
-
-            // Skip empty first column
             if (!cols[0]?.trim()) continue;
-
-            // Valid address row — first column should be a number or address
             addresses.push({
               address: cols[0]?.trim() || '',
               street: cols[1]?.trim() || '',
