@@ -29,7 +29,7 @@
   .addr-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
   .addr-section-header{padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
   .addr-section-title{font-family:var(--font-head);font-weight:700;font-size:0.95rem;}
-  .addr-row{display:flex;align-items:center;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.5rem;flex-wrap:wrap;}
+  .addr-row{display:flex;align-items:center;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.5rem;flex-wrap:nowrap;}
   .addr-row:last-child{border-bottom:none;}
   .addr-row.visited{background:rgba(54,211,153,0.04);}
   .addr-num{font-weight:700;font-size:0.9rem;min-width:70px;}
@@ -54,7 +54,7 @@
   .terr-list-row:hover{border-color:var(--accent);}
   .addr-row:nth-child(even){background:#f8f9fc;}
   .addr-row.visited:nth-child(even){background:var(--green-light);}
-  .ctx-menu{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:100;min-width:150px;overflow:hidden;display:none;}
+  .ctx-menu{position:fixed;right:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:1000;min-width:160px;overflow:hidden;display:none;}
   .ctx-menu.open{display:block;}
   .ctx-menu button{display:block;width:100%;text-align:left;padding:0.6rem 0.9rem;font-size:0.82rem;background:none;border:none;cursor:pointer;color:var(--text);white-space:nowrap;}
   .ctx-menu button:hover{background:var(--surface2);}
@@ -435,7 +435,7 @@ function renderDoorList() {
   function closeAllCtx() { document.querySelectorAll('.ctx-menu').forEach(m => m.classList.remove('open')); }
   document.addEventListener('click', closeAllCtx, { once: true });
 
-  // Context menu toggle
+// Context menu toggle
   document.querySelectorAll('.ctx-trigger').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -443,6 +443,10 @@ function renderDoorList() {
       const wasOpen = menu.classList.contains('open');
       closeAllCtx();
       if (!wasOpen) {
+        // Position menu near the button but always on screen
+        const rect = btn.getBoundingClientRect();
+        menu.style.top = `${rect.bottom + 4}px`;
+        menu.style.right = `${window.innerWidth - rect.right}px`;
         menu.classList.add('open');
         document.addEventListener('click', closeAllCtx, { once: true });
       }

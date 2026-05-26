@@ -148,16 +148,8 @@ async function init() {
       mapDiv.style.display = 'block';
     }
 
-    // Info grid
-    document.getElementById('pub-info-grid').innerHTML = `
-      <div class="info-item">
-        <div class="info-label" data-i18n="expiresDate">Expira</div>
-        <div class="info-value">${territory.currentAssign?.expiresDate ? Utils.fmtDate(territory.currentAssign.expiresDate) : '—'}</div>
-      </div>
-      <div class="info-item">
-        <div class="info-label" data-i18n="addresses">Direcciones</div>
-        <div class="info-value">${addresses.length}</div>
-      </div>`;
+    // Info grid hidden for publishers
+    document.getElementById('pub-info-grid').innerHTML = '';
 
     // Start point
     if (territory.startPoint) {
