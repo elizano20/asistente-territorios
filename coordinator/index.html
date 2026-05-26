@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v3.8 - shared territories feature -->
+<!-- v3.9 - ayuda built-in guide -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -72,6 +72,7 @@
       <div style="display:flex;gap:0.5rem;align-items:center;">
         <span id="dash-user-name" style="font-size:0.82rem;color:var(--muted);"></span>
         <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
+        <button class="btn btn-ghost btn-sm" id="btn-ayuda" onclick="document.getElementById('modal-ayuda').classList.add('open')">❓</button>
         <button class="btn btn-ghost btn-sm" id="btn-logout">Salir</button>
       </div>
     </div>
@@ -307,6 +308,109 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" id="cls-share-terr-2">Cancelar</button>
       <button class="btn btn-primary" id="save-share-terr">🤝 Compartir</button>
+    </div>
+  </div>
+</div>
+<!-- Ayuda Modal -->
+<div class="modal-overlay" id="modal-ayuda">
+  <div class="modal" style="max-width:600px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <span class="modal-title">❓ Guía del Coordinador</span>
+      <button class="modal-close" onclick="document.getElementById('modal-ayuda').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;flex:1;padding:0;">
+
+      <!-- Sections -->
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);background:var(--accent);color:#fff;">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:1rem;">🗺️ TerriOS — Referencia Rápida</div>
+        <div style="font-size:0.78rem;opacity:0.85;margin-top:0.2rem;">Congregación Maywood Español</div>
+      </div>
+
+      <!-- Inicio de Sesión -->
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:0.6rem;">🔑 Inicio de Sesión</div>
+        <div style="font-size:0.83rem;color:var(--text);line-height:1.6;">
+          Ve a <strong>territoryassistant.app</strong>, ingresa tu correo y contraseña.<br>
+          ¿Olvidaste tu contraseña? Toca <em>"¿Olvidaste tu contraseña?"</em> e ingresa tu correo para recibir un enlace de recuperación.
+        </div>
+      </div>
+
+      <!-- Panel Principal -->
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:0.6rem;">🏠 Panel Principal</div>
+        <div style="font-size:0.83rem;color:var(--text);line-height:1.7;">
+          <div style="margin-bottom:0.3rem;">🃏 <strong>Tarjetas / 📋 Lista</strong> — Cambia la vista de tus territorios</div>
+          <div style="margin-bottom:0.3rem;">🔴 <strong>Banner rojo</strong> — Tienes territorios vencidos, avisa al administrador</div>
+          <div style="margin-bottom:0.3rem;">🔵 <strong>Banner azul</strong> — Hay una campaña activa con territorios para ti</div>
+          <div>🟡 <strong>Banner amarillo</strong> — Territorios prestados de otro coordinador</div>
+        </div>
+      </div>
+
+      <!-- Ver un Territorio -->
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:0.6rem;">📋 Ver un Territorio</div>
+        <div style="font-size:0.83rem;color:var(--text);line-height:1.7;">
+          <div style="margin-bottom:0.3rem;">Toca <strong>"📋 Ver Territorio"</strong> en cualquier tarjeta para ver el mapa y las direcciones.</div>
+          <div style="margin-bottom:0.3rem;">🧭 <strong>Navegar</strong> — Abre Google Maps con el punto de inicio del territorio.</div>
+          <div>🔗 <strong>Publicadores</strong> — Copia el enlace de solo lectura para compartir con publicadores por WhatsApp o mensaje.</div>
+        </div>
+      </div>
+
+      <!-- Editar Direcciones -->
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:0.6rem;">🏠 Editar Direcciones</div>
+        <div style="font-size:0.83rem;color:var(--text);line-height:1.7;">
+          Toca <strong>⋮</strong> al final de cualquier dirección para ver las opciones:<br>
+          <div style="margin-top:0.4rem;margin-bottom:0.3rem;">✏️ <strong>Editar</strong> — Cambia la observación y/o fecha de visita. La fecha se llena automáticamente al seleccionar una observación.</div>
+          <div style="margin-bottom:0.3rem;">➕ <strong>Insertar después</strong> — Agrega una nueva dirección en esa posición (medias casas, apartamentos, nuevas unidades).</div>
+          <div>🗑 <strong>Eliminar</strong> — Borra la dirección (pide confirmación).</div>
+        </div>
+      </div>
+
+      <!-- Territorio Telefónico -->
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:0.6rem;">📞 Territorio Telefónico</div>
+        <div style="font-size:0.83rem;color:var(--text);line-height:1.7;">
+          Pestaña <strong>📞 Telefónico</strong> dentro de cada territorio.<br>
+          Toca <strong>"+ Agregar"</strong> para registrar una llamada con: dirección, nombre, teléfono, fecha y resultado.<br>
+          Cada registro tiene ✏️ Editar y 🗑 Eliminar.
+        </div>
+      </div>
+
+      <!-- Compartir Territorios -->
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);background:var(--surface2);">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:0.6rem;">🤝 Compartir Territorios</div>
+        <div style="font-size:0.83rem;color:var(--text);line-height:1.7;">
+          Toca <strong>"🤝 Compartir"</strong> en una tarjeta, selecciona un coordinador y la fecha de regreso.<br>
+          El territorio aparece en el panel del otro coordinador bajo <em>"Territorios Prestados"</em>.<br>
+          Se retira automáticamente en la fecha de regreso. Para retirarlo antes, toca <strong>"✕ Dejar de compartir"</strong> en la tarjeta.
+        </div>
+      </div>
+
+      <!-- Campañas -->
+      <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:0.6rem;">🏳️ Campañas Especiales</div>
+        <div style="font-size:0.83rem;color:var(--text);line-height:1.7;">
+          Toca <strong>"Ver Campaña →"</strong> en el banner azul para ver tus territorios de campaña.<br>
+          Trabaja el territorio normalmente y cuando termines toca <strong>"✅ Marcar Completado"</strong>.<br>
+          Los territorios de campaña son independientes de tus territorios regulares.
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div style="padding:1rem 1.2rem;background:rgba(79,142,247,0.06);">
+        <div style="font-family:var(--font-head);font-weight:700;font-size:0.9rem;color:var(--accent);margin-bottom:0.6rem;">💡 Tips Importantes</div>
+        <div style="font-size:0.83rem;color:var(--text);line-height:1.7;">
+          <div style="margin-bottom:0.3rem;">✅ Todo se guarda automáticamente — no hay botón de "guardar todo".</div>
+          <div style="margin-bottom:0.3rem;">📶 Se requiere conexión a internet para usar la aplicación.</div>
+          <div style="margin-bottom:0.3rem;">🟢 Filas con fondo verde = dirección con fecha de visita registrada.</div>
+          <div>📱 Funciona en teléfono, tableta y computadora.</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="document.getElementById('modal-ayuda').classList.remove('open')">Cerrar</button>
     </div>
   </div>
 </div>
