@@ -49,6 +49,7 @@
           <button class="btn btn-ghost btn-sm" onclick="Auth.logout()" style="flex:1" data-i18n="logout">Salir</button>
           <button class="lang-toggle" id="lang-toggle-sidebar" onclick="Lang.toggle()">EN</button>
         </div>
+        <a href="/coordinator/" class="btn btn-secondary btn-sm w-full" style="margin-top:0.5rem;text-align:center;">← Mi Panel</a>
       </div>
     </aside>
 
@@ -156,7 +157,8 @@
                   <th data-i18n="email">Correo</th>
                   <th data-i18n="dashAssigned">Asignados</th>
                   <th>Máx.</th>
-                  <th>Estado</th>
+                 <th>Estado</th>
+                  <th>Admin</th>
                   <th></th>
                 </tr></thead>
                 <tbody id="coord-table"></tbody>
@@ -770,7 +772,7 @@ window.addEventListener('DOMContentLoaded', () => Lang.init());
 Auth.onReady(async (user) => {
   if (!user) { window.location.href = '/index.html'; return; }
   const profile = Auth.currentProfile;
-  if (profile?.role !== 'admin') { window.location.href = '/coordinator/'; return; }
+  if (profile?.role !== 'admin' && !profile?.isAdmin) { window.location.href = '/coordinator/'; return; }
 
   document.getElementById('user-name').textContent = profile.name || user.email;
   document.getElementById('user-email').textContent = user.email;
@@ -1409,7 +1411,14 @@ function renderCoordinators() {
       <td class="text-muted text-sm">${c.email}</td>
       <td><span class="badge badge-blue">${cnt}/${max}</span></td>
       <td><input type="number" value="${c.maxTerr ?? settings.maxTerr ?? 8}" min="0" max="30" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.2rem 0.4rem;color:var(--text);font-size:0.82rem;" onchange="updateCoordMax('${c.id}',this.value)"></td>
-      <td>${max === 0 ? '<span class="badge badge-gray">Inactivo</span>' : '<span class="badge badge-green">Activo</span>'}</td>
+     <td>${max === 0 ? '<span class="badge badge-gray">Inactivo</span>' : '<span class="badge badge-green">Activo</span>'}</td>
+      <td>
+        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.8rem;">
+          <input type="checkbox" ${c.isAdmin ? 'checked' : ''} onchange="toggleCoordAdmin('${c.id}', this.checked)"
+            style="width:16px;height:16px;cursor:pointer;">
+          Admin
+        </label>
+      </td>
       <td>
         <div class="flex gap-1">
           <button class="btn btn-secondary btn-sm" onclick="openCoordinatorModal('${c.id}')">✏️</button>
@@ -2164,7 +2173,12 @@ window.saveReportSettings = async function() {
 document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
-
+window.toggleCoordAdmin = async function(uid, isAdmin) {
+  await DB.updateUser(uid, { isAdmin });
+  const c = coordinators.find(x => x.id === uid);
+  if (c) c.isAdmin = isAdmin;
+  Utils.toast(isAdmin ? '✅ Acceso admin otorgado' : 'Acceso admin removido', 'success');
+};
 // Make Auth available globally for logout button
 window.Auth = Auth;
 window.printS13 = async function() {

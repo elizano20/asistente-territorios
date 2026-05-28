@@ -73,6 +73,7 @@
         <span id="dash-user-name" style="font-size:0.82rem;color:var(--muted);"></span>
         <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
         <button class="btn btn-ghost btn-sm" id="btn-ayuda" onclick="document.getElementById('modal-ayuda').classList.add('open')">❓</button>
+        <a href="/admin/" id="btn-admin-link" style="display:none;" class="btn btn-secondary btn-sm">⚙️ Admin</a>
         <button class="btn btn-ghost btn-sm" id="btn-logout">Salir</button>
       </div>
     </div>
@@ -429,6 +430,7 @@ Auth.onReady(async (user) => {
   const profile = Auth.currentProfile;
   if (!profile) { window.location.href = '/index.html'; return; }
   document.getElementById('dash-user-name').textContent = profile.name || user.email;
+  if (profile.isAdmin) document.getElementById('btn-admin-link').style.display = 'inline-flex';
   document.getElementById('btn-logout').addEventListener('click', async (e) => {
     const btn = e.target;
     btn.disabled = true;
