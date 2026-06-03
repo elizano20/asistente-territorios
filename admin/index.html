@@ -2143,7 +2143,7 @@ window.sendDailyReport = async function() {
         s.onload = resolve;
         document.head.appendChild(s);
       });
-      window.emailjs.init(reportSettings.emailjsPublicKey);
+      window.emailjs.init({ publicKey: reportSettings.emailjsPublicKey.trim() });
     }
 
    const emails = (reportSettings.emails || '').split(',').map(e => e.trim()).filter(Boolean);
