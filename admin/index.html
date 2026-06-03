@@ -2157,12 +2157,16 @@ window.sendDailyReport = async function() {
         breakdown: breakdown || 'Sin datos',
         report_date: new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
       };
-      console.log('Sending EmailJS with params:', templateParams);
-      await window.emailjs.send(
+      console.log('Sending EmailJS params:', JSON.stringify(templateParams));
+      console.log('Service ID:', reportSettings.emailjsServiceId.trim());
+      console.log('Template ID:', reportSettings.emailjsTemplateId.trim());
+      console.log('Public Key:', reportSettings.emailjsPublicKey.trim());
+      const result = await window.emailjs.send(
         reportSettings.emailjsServiceId.trim(),
         reportSettings.emailjsTemplateId.trim(),
         templateParams
       );
+      console.log('EmailJS result:', result);
     }
     Utils.toast(`Reporte enviado a ${emails.length} destinatario(s)`, 'success');
   } catch (err) {
