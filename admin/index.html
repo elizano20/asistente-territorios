@@ -2146,16 +2146,23 @@ window.sendDailyReport = async function() {
       window.emailjs.init(reportSettings.emailjsPublicKey);
     }
 
-    const emails = (reportSettings.emails || '').split(',').map(e => e.trim()).filter(Boolean);
+   const emails = (reportSettings.emails || '').split(',').map(e => e.trim()).filter(Boolean);
+    if (!emails.length) { Utils.toast('No hay correos configurados', 'error'); return; }
     for (const email of emails) {
-      await window.emailjs.send(reportSettings.emailjsServiceId, reportSettings.emailjsTemplateId, {
+      const templateParams = {
         to_email: email,
         campaign_name: activeCampaign.name,
         progress: `${completed}/${total} (${pct}%)`,
         today_completed: todayCompleted.length > 0 ? todayCompleted.map(a => a.territoryNumber).join(', ') : 'Ninguno hoy',
-        breakdown,
+        breakdown: breakdown || 'Sin datos',
         report_date: new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-      });
+      };
+      console.log('Sending EmailJS with params:', templateParams);
+      await window.emailjs.send(
+        reportSettings.emailjsServiceId.trim(),
+        reportSettings.emailjsTemplateId.trim(),
+        templateParams
+      );
     }
     Utils.toast(`Reporte enviado a ${emails.length} destinatario(s)`, 'success');
   } catch (err) {
