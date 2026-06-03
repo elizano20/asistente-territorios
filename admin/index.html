@@ -158,6 +158,8 @@
                   <th data-i18n="dashAssigned">Asignados</th>
                   <th>Máx.</th>
                  <th>Estado</th>
+                  <th>Campaña</th>
+                  <th>Máx. Camp.</th>
                   <th>Admin</th>
                   <th></th>
                 </tr></thead>
@@ -1283,7 +1285,11 @@ window.openAutoAssignAll = async function() {
 
   // For each coordinator find the highest sequential index they've worked
   // Then assign the next available block after that point
-  const activeCoords = coordinators.filter(c => (c.maxTerr ?? settings.maxTerr ?? 8) > 0);
+  // Only include coordinators that participate in campaigns
+  const activeCoords = coordinators.filter(c =>
+    c.participatesInCampaign !== false &&
+    (c.campaignMaxTerr ?? c.maxTerr ?? settings.maxTerr ?? 8) > 0
+  );
 
   // Find next start index for each coordinator
   const coordNextIdx = {};
@@ -1412,6 +1418,13 @@ function renderCoordinators() {
       <td><span class="badge badge-blue">${cnt}/${max}</span></td>
       <td><input type="number" value="${c.maxTerr ?? settings.maxTerr ?? 8}" min="0" max="30" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.2rem 0.4rem;color:var(--text);font-size:0.82rem;" onchange="updateCoordMax('${c.id}',this.value)"></td>
      <td>${max === 0 ? '<span class="badge badge-gray">Inactivo</span>' : '<span class="badge badge-green">Activo</span>'}</td>
+      <td>
+        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.8rem;">
+          <input type="checkbox" ${c.participatesInCampaign !== false ? 'checked' : ''} onchange="toggleCoordCampaign('${c.id}', this.checked)"
+            style="width:16px;height:16px;cursor:pointer;">
+        </label>
+      </td>
+      <td><input type="number" value="${c.campaignMaxTerr ?? c.maxTerr ?? settings.maxTerr ?? 8}" min="0" max="30" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.2rem 0.4rem;color:var(--text);font-size:0.82rem;" onchange="updateCoordCampaignMax('${c.id}',this.value)"></td>
       <td>
         <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.8rem;">
           <input type="checkbox" ${c.isAdmin ? 'checked' : ''} onchange="toggleCoordAdmin('${c.id}', this.checked)"
@@ -2020,7 +2033,7 @@ window.openAutoAssignCampaign = async function() {
   let usedTerrIds = new Set();
 
   activeCoords.forEach(c => {
-    const max = coordMax(c.id);
+    const max = c.campaignMaxTerr ?? coordMax(c.id);
     if (max === 0) return;
     const startIdx = coordNextIdx[c.id];
     const block = [];
@@ -2178,6 +2191,19 @@ window.toggleCoordAdmin = async function(uid, isAdmin) {
   const c = coordinators.find(x => x.id === uid);
   if (c) c.isAdmin = isAdmin;
   Utils.toast(isAdmin ? '✅ Acceso admin otorgado' : 'Acceso admin removido', 'success');
+};
+window.toggleCoordCampaign = async function(uid, participates) {
+  await DB.updateUser(uid, { participatesInCampaign: participates });
+  const c = coordinators.find(x => x.id === uid);
+  if (c) c.participatesInCampaign = participates;
+  Utils.toast(participates ? '✅ Participará en campañas' : 'Excluido de campañas', 'success');
+};
+
+window.updateCoordCampaignMax = async function(uid, val) {
+  const n = parseInt(val);
+  await DB.updateUser(uid, { campaignMaxTerr: isNaN(n) ? null : n });
+  const c = coordinators.find(x => x.id === uid);
+  if (c) c.campaignMaxTerr = isNaN(n) ? null : n;
 };
 // Make Auth available globally for logout button
 window.Auth = Auth;
