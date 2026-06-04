@@ -2135,19 +2135,24 @@ window.sendDailyReport = async function() {
   const todayCompleted = campaignAssignments.filter(a => a.completedDate === today);
 
   try {
-    // Load EmailJS
+    // Load EmailJS if not already loaded
     if (!window.emailjs) {
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         const s = document.createElement('script');
         s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
         s.onload = resolve;
+        s.onerror = reject;
         document.head.appendChild(s);
       });
-      window.emailjs.init({ publicKey: reportSettings.emailjsPublicKey.trim() });
     }
 
-   const emails = (reportSettings.emails || '').split(',').map(e => e.trim()).filter(Boolean);
+    const emails = (reportSettings.emails || '').split(',').map(e => e.trim()).filter(Boolean);
     if (!emails.length) { Utils.toast('No hay correos configurados', 'error'); return; }
+
+    const serviceId = reportSettings.emailjsServiceId.trim();
+    const templateId = reportSettings.emailjsTemplateId.trim();
+    const publicKey = reportSettings.emailjsPublicKey.trim();
+
     for (const email of emails) {
       const templateParams = {
         to_email: email,
@@ -2158,20 +2163,20 @@ window.sendDailyReport = async function() {
         breakdown: breakdown || 'Sin datos',
         report_date: new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
       };
-      console.log('Sending EmailJS params:', JSON.stringify(templateParams));
-      console.log('Service ID:', reportSettings.emailjsServiceId.trim());
-      console.log('Template ID:', reportSettings.emailjsTemplateId.trim());
-      console.log('Public Key:', reportSettings.emailjsPublicKey.trim());
+
+      // Pass publicKey directly in send() instead of init()
       const result = await window.emailjs.send(
-        reportSettings.emailjsServiceId.trim(),
-        reportSettings.emailjsTemplateId.trim(),
-        templateParams
+        serviceId,
+        templateId,
+        templateParams,
+        { publicKey }
       );
-      console.log('EmailJS result:', result);
+      console.log('EmailJS result:', result.status, result.text);
     }
     Utils.toast(`Reporte enviado a ${emails.length} destinatario(s)`, 'success');
   } catch (err) {
-    Utils.toast('Error enviando reporte: ' + err.message, 'error');
+    console.error('EmailJS error:', err);
+    Utils.toast('Error: ' + (err?.text || err?.message || JSON.stringify(err)), 'error');
   }
 };
 
