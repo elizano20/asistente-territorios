@@ -2151,6 +2151,7 @@ window.sendDailyReport = async function() {
     for (const email of emails) {
       const templateParams = {
         to_email: email,
+        from_name: 'TerriOS',
         campaign_name: activeCampaign.name,
         progress: `${completed}/${total} (${pct}%)`,
         today_completed: todayCompleted.length > 0 ? todayCompleted.map(a => a.territoryNumber).join(', ') : 'Ninguno hoy',
