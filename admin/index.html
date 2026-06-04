@@ -2128,7 +2128,7 @@ window.sendDailyReport = async function() {
     if (!myA.length) return '';
     const comp = myA.filter(a => a.status === 'completado').length;
     return `${c.name}: ${comp}/${myA.length}`;
-  }).filter(Boolean).join('\n');
+  }).filter(Boolean).join(' | ');
 
   // Today's completions
   const today = Utils.today();
