@@ -15,11 +15,14 @@
 </div>
 
 <div id="app" style="display:none">
-  <!-- Mobile topbar -->
+ <!-- Mobile topbar -->
   <div class="topbar">
     <button class="hamburger" onclick="toggleSidebar()">☰</button>
     <span class="topbar-logo">Terri<span>·</span>OS</span>
-    <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+      <a href="/coordinator/" class="btn btn-secondary btn-sm" style="font-size:0.75rem;padding:0.3rem 0.6rem;">← Mi Panel</a>
+      <button class="lang-toggle" id="lang-toggle" onclick="Lang.toggle()">EN</button>
+    </div>
   </div>
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
@@ -673,6 +676,45 @@
   </div>
 </div>
 
+<!-- Admin Edit Address Modal -->
+<div class="modal-overlay" id="modal-admin-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">✏️ Editar Dirección</span>
+      <button class="modal-close" onclick="closeModal('modal-admin-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="admin-edit-addr-id">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Dirección</label>
+          <input type="text" class="form-control" id="admin-edit-addr-val" placeholder="Ej: 4700 1/2">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Calle</label>
+          <input type="text" class="form-control" id="admin-edit-street-val" placeholder="Ej: 58th St">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observación <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+        <input type="text" class="form-control" id="admin-edit-obs-val" placeholder="Ej: Perro afuera">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Comentario <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+        <input type="text" class="form-control" id="admin-edit-comment-val">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha de Visita <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+        <input type="date" class="form-control" id="admin-edit-visit-val">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('admin-edit-visit-val').value=''" style="margin-top:0.3rem;">✕ Borrar fecha</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-admin-edit')">Cancelar</button>
+      <button class="btn btn-green" onclick="saveAdminEditAddr()">Guardar</button>
+    </div>
+  </div>
+</div>
 <!-- Campaign Modal -->
 <div class="modal-overlay" id="modal-campaign">
   <div class="modal">
@@ -1734,14 +1776,20 @@ function renderAddrManager(filter = '') {
       </td>
     </tr>`;
 
-    html += `<tr style="${isHeader ? 'background:#FEF2F2;' : ''}border-bottom:1px solid var(--border-light);">
+   html += `<tr style="${isHeader ? 'background:#FEF2F2;' : ''}border-bottom:1px solid var(--border-light);">
       <td style="padding:0.55rem 1rem;font-size:0.85rem;${isHeader ? 'color:var(--red);font-weight:600;' : ''}">${a.address || '—'}</td>
       <td style="padding:0.55rem 1rem;font-size:0.85rem;color:var(--muted);">${a.street || '—'}</td>
       <td style="padding:0.55rem 1rem;font-size:0.82rem;">${a.observation ? `<span style="background:var(--yellow-light);color:var(--yellow);padding:0.1rem 0.4rem;border-radius:4px;font-size:0.72rem;">${a.observation}</span>` : '—'}</td>
       <td style="padding:0.55rem 1rem;font-size:0.82rem;color:var(--muted);">${a.comment || '—'}</td>
       <td style="padding:0.55rem 1rem;font-size:0.82rem;color:var(--muted);">${a.visitDate ? Utils.fmtDate(a.visitDate) : '—'}</td>
       <td style="padding:0.55rem 0.5rem;text-align:right;white-space:nowrap;">
-        <button class="btn btn-danger btn-sm" onclick="deleteAddrRow('${a.id}')" title="Eliminar">🗑</button>
+        <div style="position:relative;display:inline-block;">
+          <button class="btn btn-secondary btn-sm admin-addr-ctx-btn" data-id="${a.id}" style="font-size:1rem;padding:0.2rem 0.5rem;font-weight:700;">⋮</button>
+          <div class="admin-addr-ctx-menu" id="actx-${a.id}" style="display:none;position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:1000;min-width:140px;overflow:hidden;">
+            <button onclick="openAdminEditAddr('${a.id}')" style="display:block;width:100%;text-align:left;padding:0.6rem 0.9rem;font-size:0.82rem;background:none;border:none;cursor:pointer;color:var(--text);">✏️ Editar</button>
+            <button onclick="deleteAddrRow('${a.id}')" style="display:block;width:100%;text-align:left;padding:0.6rem 0.9rem;font-size:0.82rem;background:none;border:none;cursor:pointer;color:var(--red);">🗑 Eliminar</button>
+          </div>
+        </div>
       </td>
     </tr>`;
   });
@@ -1756,6 +1804,24 @@ function renderAddrManager(filter = '') {
   </tr>`;
 
   document.getElementById('addr-manager-table').innerHTML = html;
+
+  // Admin address context menus
+  function closeAllAdminCtx() { document.querySelectorAll('.admin-addr-ctx-menu').forEach(m => m.style.display = 'none'); }
+  document.querySelectorAll('.admin-addr-ctx-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = document.getElementById(`actx-${btn.dataset.id}`);
+      const wasOpen = menu.style.display === 'block';
+      closeAllAdminCtx();
+      if (!wasOpen) {
+        const rect = btn.getBoundingClientRect();
+        menu.style.top = `${rect.bottom + 4}px`;
+        menu.style.right = `${window.innerWidth - rect.right}px`;
+        menu.style.display = 'block';
+        document.addEventListener('click', closeAllAdminCtx, { once: true });
+      }
+    });
+  });
 
   // Hover effect + click on insert rows
   document.querySelectorAll('.insert-hover-row').forEach(row => {
@@ -1828,7 +1894,36 @@ window.saveAdminInsertAddr = async function() {
   renderAddrManager(document.getElementById('addr-manager-search').value.toLowerCase());
   Utils.toast('Dirección insertada', 'success');
 };
+window.openAdminEditAddr = function(addrId) {
+  const a = managingAddresses.find(x => x.id === addrId);
+  if (!a) return;
+  document.getElementById('admin-edit-addr-id').value = addrId;
+  document.getElementById('admin-edit-addr-val').value = a.address || '';
+  document.getElementById('admin-edit-street-val').value = a.street || '';
+  document.getElementById('admin-edit-obs-val').value = a.observation || '';
+  document.getElementById('admin-edit-comment-val').value = a.comment || '';
+  document.getElementById('admin-edit-visit-val').value = a.visitDate || '';
+  document.getElementById('modal-admin-edit').classList.add('open');
+};
 
+window.saveAdminEditAddr = async function() {
+  const addrId = document.getElementById('admin-edit-addr-id').value;
+  const address = document.getElementById('admin-edit-addr-val').value.trim();
+  if (!address) { Utils.toast('Dirección requerida', 'error'); return; }
+  const data = {
+    address,
+    street: document.getElementById('admin-edit-street-val').value.trim(),
+    observation: document.getElementById('admin-edit-obs-val').value.trim(),
+    comment: document.getElementById('admin-edit-comment-val').value.trim(),
+    visitDate: document.getElementById('admin-edit-visit-val').value
+  };
+  await DB.saveAddress(managingTerrId, data, addrId);
+  const idx = managingAddresses.findIndex(a => a.id === addrId);
+  if (idx !== -1) Object.assign(managingAddresses[idx], data);
+  closeModal('modal-admin-edit');
+  renderAddrManager(document.getElementById('addr-manager-search').value.toLowerCase());
+  Utils.toast('Dirección actualizada', 'success');
+};
 window.deleteAllHeaderRows = async function() {
   const headerRows = managingAddresses.filter(isHeaderRow);
   if (!headerRows.length) { Utils.toast('No se detectaron filas de encabezado', 'info'); return; }

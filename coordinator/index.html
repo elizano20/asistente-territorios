@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v4.0 - campaign lock, participatesInCampaign, remove nav from cards -->
+<!-- v4.1 - fix addr-row overflow on small screens -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -29,14 +29,15 @@
   .addr-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem;}
   .addr-section-header{padding:0.9rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
   .addr-section-title{font-family:var(--font-head);font-weight:700;font-size:0.95rem;}
-  .addr-row{display:flex;align-items:center;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.5rem;flex-wrap:nowrap;}
+  .addr-row{display:flex;align-items:center;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.4rem;flex-wrap:nowrap;overflow:hidden;}
   .addr-row:last-child{border-bottom:none;}
   .addr-row.visited{background:rgba(54,211,153,0.04);}
-  .addr-num{font-weight:700;font-size:0.9rem;min-width:70px;}
-  .addr-street{color:var(--muted);font-size:0.82rem;min-width:90px;}
-  .addr-obs{flex:1;font-size:0.82rem;}
-  .obs-tag{display:inline-block;padding:0.15rem 0.6rem;border-radius:4px;font-size:0.72rem;background:rgba(245,197,24,0.12);color:var(--yellow);font-family:var(--font-mono);}
-  .addr-date{font-size:0.78rem;color:var(--muted);}
+  .addr-num{font-weight:700;font-size:0.85rem;min-width:52px;flex-shrink:0;}
+  .addr-street{color:var(--muted);font-size:0.78rem;min-width:60px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;}
+  .addr-obs{flex:1;font-size:0.82rem;min-width:0;overflow:hidden;}
+  .obs-tag{display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.68rem;background:rgba(245,197,24,0.12);color:var(--yellow);font-family:var(--font-mono);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+  .addr-date{font-size:0.72rem;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+  .ctx-trigger{flex-shrink:0 !important;margin-left:auto;}
   .edit-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;cursor:pointer;color:var(--text);}
   .edit-btn:hover{border-color:var(--accent);color:var(--accent);}
   .phone-row{display:flex;align-items:flex-start;padding:0.65rem 1rem;border-bottom:1px solid var(--border);gap:0.5rem;flex-wrap:wrap;}
