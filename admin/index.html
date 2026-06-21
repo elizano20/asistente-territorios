@@ -960,6 +960,7 @@ function renderTerritories() {
           ${t.state === 'Asignado' || t.state === 'Vencido' ? `<button class="btn btn-secondary btn-sm" onclick="openReturnModal('${t.id}')">↩</button>` : ''}
           ${t.state === 'Devuelto' ? `<button class="btn btn-secondary btn-sm" style="color:var(--green);border-color:var(--green);" onclick="markDisponible('${t.id}')" title="Marcar como Disponible">✓ Disponible</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="openShareModal('${t.id}')">🔗</button>
+          <button class="btn btn-secondary btn-sm" onclick="openQRModal('${t.id}')">📱</button>
         </div>
         <button class="btn btn-danger btn-sm" onclick="deleteTerritoryConfirm('${t.id}')">🗑</button>
       </div>
@@ -1106,7 +1107,48 @@ window.markDisponible = async function(terrId) {
   Utils.toast('Territorio marcado como Disponible', 'success');
   await loadAll();
 };
+let qrLib = null, qrCurrentTerrId = null;
+async function loadQRLib() {
+  if (qrLib) return qrLib;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  qrLib = window.QRCode;
+  return qrLib;
+}
 
+window.openQRModal = async function(terrId) {
+  qrCurrentTerrId = terrId;
+  const t = territories.find(x => x.id === terrId);
+  const url = `${window.location.origin}/view/?t=${terrId}`;
+  document.getElementById('qr-terr-label').textContent = `Territorio ${t?.number || ''}`;
+  const wrap = document.getElementById('qr-canvas-wrap');
+  wrap.innerHTML = '<span class="text-sm text-muted">Generando...</span>';
+  document.getElementById('modal-qr').classList.add('open');
+  try {
+    const QR = await loadQRLib();
+    wrap.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    wrap.appendChild(canvas);
+    await QR.toCanvas(canvas, url, { width: 240, margin: 2 });
+  } catch (err) {
+    wrap.innerHTML = '<span class="text-sm" style="color:var(--red);">Error generando QR</span>';
+  }
+};
+
+window.downloadQR = function() {
+  const canvas = document.querySelector('#qr-canvas-wrap canvas');
+  if (!canvas) return;
+  const t = territories.find(x => x.id === qrCurrentTerrId);
+  const a = document.createElement('a');
+  a.download = `QR_Territorio_${t?.number || 'X'}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+};
 window.deleteTerritoryConfirm = async function(id) {
   if (!Utils.confirm(Lang.t('confirmDelete'))) return;
   try {

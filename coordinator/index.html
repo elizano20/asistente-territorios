@@ -134,6 +134,7 @@
       <div style="display:flex;gap:0.5rem;">
         <a id="detail-nav-btn" href="#" target="_blank" class="btn btn-secondary btn-sm" style="display:none">🧭 Navegar</a>
         <button class="btn btn-secondary btn-sm" id="btn-share">🔗 Publicadores</button>
+        <button class="btn btn-secondary btn-sm" id="btn-qr">📱 QR</button>
       </div>
     </div>
     <div class="page">
@@ -310,6 +311,24 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" id="cls-share-terr-2">Cancelar</button>
       <button class="btn btn-primary" id="save-share-terr">🤝 Compartir</button>
+    </div>
+  </div>
+</div>
+<!-- QR Code Modal -->
+<div class="modal-overlay" id="modal-qr">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">📱 Código QR</span>
+      <button class="modal-close" onclick="document.getElementById('modal-qr').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <div id="qr-terr-label" style="font-weight:700;font-family:var(--font-head);margin-bottom:1rem;"></div>
+      <div id="qr-canvas-wrap" style="display:inline-block;padding:1rem;background:#fff;border-radius:8px;border:1px solid var(--border);"></div>
+      <p class="text-sm text-muted" style="margin-top:1rem;">Escanea para ver el territorio sin necesidad de iniciar sesión.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-qr').classList.remove('open')">Cerrar</button>
+      <button class="btn btn-primary" onclick="downloadQR()">⬇️ Descargar</button>
     </div>
   </div>
 </div>
@@ -756,6 +775,50 @@ document.getElementById('btn-back').addEventListener('click', () => {
   window.scrollTo(0, 0);
 });
 document.getElementById('btn-share').addEventListener('click', () => { if (!currentTerrId) return; const url = `${window.location.origin}/view/?t=${currentTerrId}`; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => Utils.toast('Enlace copiado', 'success')); else prompt('Enlace:', url); });
+document.getElementById('btn-qr').addEventListener('click', () => openQRModal());
+
+let qrLib = null;
+async function loadQRLib() {
+  if (qrLib) return qrLib;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  qrLib = window.QRCode;
+  return qrLib;
+}
+
+async function openQRModal() {
+  if (!currentTerrId) return;
+  const t = myTerritories.find(x => x.id === currentTerrId);
+  const url = `${window.location.origin}/view/?t=${currentTerrId}`;
+  document.getElementById('qr-terr-label').textContent = `Territorio ${t?.number || ''}`;
+  const wrap = document.getElementById('qr-canvas-wrap');
+  wrap.innerHTML = '<span class="text-sm text-muted">Generando...</span>';
+  document.getElementById('modal-qr').classList.add('open');
+  try {
+    const QR = await loadQRLib();
+    wrap.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    wrap.appendChild(canvas);
+    await QR.toCanvas(canvas, url, { width: 240, margin: 2 });
+  } catch (err) {
+    wrap.innerHTML = '<span class="text-sm" style="color:var(--red);">Error generando QR</span>';
+  }
+}
+
+window.downloadQR = function() {
+  const canvas = document.querySelector('#qr-canvas-wrap canvas');
+  if (!canvas) return;
+  const t = myTerritories.find(x => x.id === currentTerrId);
+  const a = document.createElement('a');
+  a.download = `QR_Territorio_${t?.number || 'X'}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+};
 document.getElementById('btn-back-campaign').addEventListener('click', () => { document.getElementById('view-campaign').style.display = 'none'; document.getElementById('view-dashboard').style.display = 'block'; window.scrollTo(0, 0); });
 document.getElementById('btn-view-campaign').addEventListener('click', () => openCampaignView());
 
