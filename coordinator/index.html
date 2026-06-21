@@ -535,6 +535,7 @@ function renderDashboard() {
         <span class="badge badge-gray" style="font-size:0.68rem;">${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
         ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du}d</span>` : ''}
         <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}" ${campaignActive ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>📋 Ver</button>
+        <button class="btn btn-secondary btn-sm share-terr-btn" data-id="${t.id}" data-num="${t.number}">🤝</button>
       </div>`;
     }).join('');
   }
