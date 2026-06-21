@@ -51,7 +51,8 @@
   .tab-pane.active{display:block;}
   .page{padding:1rem;max-width:900px;margin:0 auto;}
   .sticky-bar{position:sticky;top:0;z-index:50;background:var(--surface);border-bottom:1px solid var(--border);padding:0.7rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;}
-  .terr-list-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;}
+  .terr-list-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;}
+  .terr-list-row > div:nth-child(2){min-width:120px;}
   .terr-list-row:hover{border-color:var(--accent);}
   .addr-row:nth-child(even){background:#f8f9fc;}
   .addr-row.visited:nth-child(even){background:var(--green-light);}
@@ -534,8 +535,8 @@ function renderDashboard() {
         <span class="badge ${isExp ? 'badge-red' : 'badge-blue'}">${isExp ? 'Vencido' : 'Asignado'}</span>
         <span class="badge badge-gray" style="font-size:0.68rem;">${Utils.fmtDate(t.currentAssign?.expiresDate)}</span>
         ${du !== null && du <= 30 && !isExp ? `<span class="badge badge-yellow">${du}d</span>` : ''}
-        <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}" ${campaignActive ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>📋 Ver</button>
-        <button class="btn btn-secondary btn-sm share-terr-btn" data-id="${t.id}" data-num="${t.number}">🤝 Compartir</button>
+        <button class="btn btn-primary btn-sm open-terr-btn" data-id="${t.id}" ${campaignActive ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''} style="white-space:nowrap;">📋 Ver</button>
+        <button class="btn btn-secondary btn-sm share-terr-btn" data-id="${t.id}" data-num="${t.number}" style="white-space:nowrap;">🤝 Compartir</button>
       </div>`;
     }).join('');
   }
