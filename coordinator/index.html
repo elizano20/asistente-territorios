@@ -777,46 +777,25 @@ document.getElementById('btn-back').addEventListener('click', () => {
 document.getElementById('btn-share').addEventListener('click', () => { if (!currentTerrId) return; const url = `${window.location.origin}/view/?t=${currentTerrId}`; if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => Utils.toast('Enlace copiado', 'success')); else prompt('Enlace:', url); });
 document.getElementById('btn-qr').addEventListener('click', () => openQRModal());
 
-let qrLib = null;
-async function loadQRLib() {
-  if (qrLib) return qrLib;
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-  qrLib = window.QRCode;
-  return qrLib;
-}
-
 async function openQRModal() {
   if (!currentTerrId) return;
   const t = myTerritories.find(x => x.id === currentTerrId);
   const url = `${window.location.origin}/view/?t=${currentTerrId}`;
   document.getElementById('qr-terr-label').textContent = `Territorio ${t?.number || ''}`;
   const wrap = document.getElementById('qr-canvas-wrap');
-  wrap.innerHTML = '<span class="text-sm text-muted">Generando...</span>';
+  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(url)}`;
+  wrap.innerHTML = `<img id="qr-img" src="${qrImgUrl}" width="240" height="240" alt="QR Territorio ${t?.number || ''}" style="display:block;">`;
   document.getElementById('modal-qr').classList.add('open');
-  try {
-    const QR = await loadQRLib();
-    wrap.innerHTML = '';
-    const canvas = document.createElement('canvas');
-    wrap.appendChild(canvas);
-    await QR.toCanvas(canvas, url, { width: 240, margin: 2 });
-  } catch (err) {
-    wrap.innerHTML = '<span class="text-sm" style="color:var(--red);">Error generando QR</span>';
-  }
 }
 
 window.downloadQR = function() {
-  const canvas = document.querySelector('#qr-canvas-wrap canvas');
-  if (!canvas) return;
+  const img = document.getElementById('qr-img');
+  if (!img) return;
   const t = myTerritories.find(x => x.id === currentTerrId);
   const a = document.createElement('a');
   a.download = `QR_Territorio_${t?.number || 'X'}.png`;
-  a.href = canvas.toDataURL('image/png');
+  a.href = img.src;
+  a.target = '_blank';
   a.click();
 };
 document.getElementById('btn-back-campaign').addEventListener('click', () => { document.getElementById('view-campaign').style.display = 'none'; document.getElementById('view-dashboard').style.display = 'block'; window.scrollTo(0, 0); });
