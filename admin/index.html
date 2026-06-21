@@ -1107,19 +1107,7 @@ window.markDisponible = async function(terrId) {
   Utils.toast('Territorio marcado como Disponible', 'success');
   await loadAll();
 };
-let qrLib = null, qrCurrentTerrId = null;
-async function loadQRLib() {
-  if (qrLib) return qrLib;
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
-    s.onload = resolve;
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-  qrLib = window.QRCode;
-  return qrLib;
-}
+let qrCurrentTerrId = null;
 
 window.openQRModal = async function(terrId) {
   qrCurrentTerrId = terrId;
@@ -1127,27 +1115,21 @@ window.openQRModal = async function(terrId) {
   const url = `${window.location.origin}/view/?t=${terrId}`;
   document.getElementById('qr-terr-label').textContent = `Territorio ${t?.number || ''}`;
   const wrap = document.getElementById('qr-canvas-wrap');
-  wrap.innerHTML = '<span class="text-sm text-muted">Generando...</span>';
+  const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(url)}`;
+  wrap.innerHTML = `<img id="qr-img" src="${qrImgUrl}" width="240" height="240" alt="QR Territorio ${t?.number || ''}" style="display:block;">`;
   document.getElementById('modal-qr').classList.add('open');
-  try {
-    const QR = await loadQRLib();
-    wrap.innerHTML = '';
-    const canvas = document.createElement('canvas');
-    wrap.appendChild(canvas);
-    await QR.toCanvas(canvas, url, { width: 240, margin: 2 });
-  } catch (err) {
-    wrap.innerHTML = '<span class="text-sm" style="color:var(--red);">Error generando QR</span>';
-  }
 };
 
 window.downloadQR = function() {
-  const canvas = document.querySelector('#qr-canvas-wrap canvas');
-  if (!canvas) return;
+  const img = document.getElementById('qr-img');
+  if (!img) return;
   const t = territories.find(x => x.id === qrCurrentTerrId);
   const a = document.createElement('a');
   a.download = `QR_Territorio_${t?.number || 'X'}.png`;
-  a.href = canvas.toDataURL('image/png');
+  a.href = img.src;
+  a.target = '_blank';
   a.click();
+};
 };
 window.deleteTerritoryConfirm = async function(id) {
   if (!Utils.confirm(Lang.t('confirmDelete'))) return;
