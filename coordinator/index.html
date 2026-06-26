@@ -2,6 +2,14 @@
 <!-- v4.1 - fix addr-row overflow on small screens -->
 <html lang="es">
 <head>
+  <!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#4F8EF7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="TerriOS">
+<link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Coordinador — TerriOS</title>
@@ -1031,6 +1039,13 @@ document.getElementById('save-share-terr').addEventListener('click', async () =>
 
 ['cls-share-terr','cls-share-terr-2'].forEach(id => document.getElementById(id).addEventListener('click', closeModals));
 window.Auth = Auth;
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW:', err));
+    });
+  }
 </script>
 </body>
 </html>

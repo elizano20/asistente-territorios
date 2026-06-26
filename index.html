@@ -7,6 +7,14 @@
 <title>Asistente de Territorios</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/app.css">
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#4F8EF7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="TerriOS">
+<link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
 </head>
 <body>
 
@@ -134,5 +142,12 @@ async function doLogin() {
 
 <script src="/assets/i18n.js"></script>
 <script>document.addEventListener('DOMContentLoaded', () => Lang.init());</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW:', err));
+    });
+  }
+</script>
 </body>
 </html>
